@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
+import { toast } from "sonner";
 import { useEditorStore } from "@/store/editorStore";
 import { AnnotationLayer } from "./AnnotationLayer";
 import type { Annotation, Tool } from "@/store/types";
@@ -30,6 +31,19 @@ function toolToAnnType(tool: Tool): Annotation["type"] | null {
   return map[tool] ?? null;
 }
 
+function cursorForTool(tool: Tool): string {
+  switch (tool) {
+    case "pan":
+      return "cursor-grab active:cursor-grabbing";
+    case "select":
+      return "cursor-default";
+    case "form":
+      return "cursor-text";
+    default:
+      return "cursor-crosshair";
+  }
+}
+
 export function PageView({ pageIndex, scale }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +54,6 @@ export function PageView({ pageIndex, scale }: Props) {
   const stampLabel = useEditorStore((s) => s.stampLabel);
   const addAnnotation = useEditorStore((s) => s.addAnnotation);
   const setDraft = useEditorStore((s) => s.setDraft);
-  const draft = useEditorStore((s) => s.draft);
   const selectAnnotations = useEditorStore((s) => s.selectAnnotations);
   const searchMatches = useEditorStore((s) => s.searchMatches);
   const searchIndex = useEditorStore((s) => s.searchIndex);
@@ -53,6 +66,7 @@ export function PageView({ pageIndex, scale }: Props) {
     points?: { x: number; y: number }[];
     id: string;
   } | null>(null);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
 
   const rotation = page?.rotation || 0;
   const baseW = page?.width || 612;
@@ -64,11 +78,13 @@ export function PageView({ pageIndex, scale }: Props) {
       if (!pdfDoc || !page || !canvasRef.current) return;
       setRendering(true);
       try {
+        renderTaskRef.current?.cancel();
+        renderTaskRef.current = null;
         if (page.sourceIndex < 0) {
           const canvas = canvasRef.current;
           const ctx = canvas.getContext("2d")!;
-          canvas.width = baseW * scale;
-          canvas.height = baseH * scale;
+          canvas.width = Math.max(1, Math.floor(baseW * scale));
+          canvas.height = Math.max(1, Math.floor(baseH * scale));
           ctx.fillStyle = "#fff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.strokeStyle = "#e5e5e5";
@@ -85,15 +101,26 @@ export function PageView({ pageIndex, scale }: Props) {
         const ctx = canvas.getContext("2d")!;
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+        const task = pdfPage.render({ canvasContext: ctx, viewport });
+        renderTaskRef.current = task;
+        await task.promise;
         if (!cancelled) setRendering(false);
-      } catch {
+      } catch (err) {
+        if (
+          err &&
+          typeof err === "object" &&
+          "name" in err &&
+          (err as { name: string }).name === "RenderingCancelledException"
+        ) {
+          return;
+        }
         if (!cancelled) setRendering(false);
       }
     }
     void render();
     return () => {
       cancelled = true;
+      renderTaskRef.current?.cancel();
     };
   }, [pdfDoc, page, pageIndex, scale, rotation, baseW, baseH]);
 
@@ -110,20 +137,21 @@ export function PageView({ pageIndex, scale }: Props) {
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (tool === "pan" || tool === "select" || tool === "form") {
-      if (tool === "select") selectAnnotations([]);
+    if (e.button !== 0) return;
+    if (tool === "pan" || tool === "form") return;
+    if (tool === "select") {
+      // Clear selection when clicking empty page (annotation layer stops propagation).
+      selectAnnotations([]);
       return;
     }
     if (tool === "signature") {
-      setDialog("signatureOpen", true);
-      // Store pending place point via draft
       const p = toPagePoint(e);
       setDraft({
         id: uuid(),
         type: "signature",
         pageIndex,
-        x: p.x,
-        y: p.y,
+        x: p.x - 90,
+        y: p.y - 30,
         w: 180,
         h: 60,
         color: settings.defaultColor,
@@ -131,6 +159,7 @@ export function PageView({ pageIndex, scale }: Props) {
         strokeWidth: 2,
         createdAt: Date.now(),
       });
+      setDialog("signatureOpen", true);
       return;
     }
 
@@ -158,12 +187,17 @@ export function PageView({ pageIndex, scale }: Props) {
     if (annType === "pen") {
       setDraft({ ...base, type: "pen", points: [{ ...p }] });
     } else if (annType === "note") {
+      const text = window.prompt("Note text", "Note");
+      if (text === null) {
+        drawing.current = null;
+        return;
+      }
       addAnnotation({
         ...base,
         type: "note",
         x: p.x,
         y: p.y,
-        text: "Note",
+        text: text || "Note",
         opacity: 1,
       });
       drawing.current = null;
@@ -222,7 +256,7 @@ export function PageView({ pageIndex, scale }: Props) {
     if (!drawing.current) return;
     const p = toPagePoint(e);
     const { startX, startY, id } = drawing.current;
-    const d = draft;
+    const d = useEditorStore.getState().draft;
     if (!d || d.id !== id) return;
 
     if (d.type === "pen") {
@@ -265,18 +299,30 @@ export function PageView({ pageIndex, scale }: Props) {
       setDraft(null);
       return;
     }
-    // Minimum size check
-    if (
+
+    const tooSmallShape =
       (d.type === "rect" ||
         d.type === "ellipse" ||
-        d.type === "textbox" ||
-        d.type === "highlight" ||
+        d.type === "textbox") &&
+      "w" in d &&
+      "h" in d &&
+      Math.abs((d as { w: number }).w) < 4 &&
+      Math.abs((d as { h: number }).h) < 4;
+
+    const tooSmallMarkup =
+      (d.type === "highlight" ||
         d.type === "underline" ||
         d.type === "strikethrough") &&
-      (("w" in d && Math.abs((d as { w: number }).w) < 4) ||
-        ("rects" in d &&
-          (d as { rects: { w: number }[] }).rects?.[0]?.w < 4))
-    ) {
+      "rects" in d &&
+      ((d as { rects: { w: number }[] }).rects?.[0]?.w ?? 0) < 4;
+
+    const tooSmallLine =
+      (d.type === "line" || d.type === "arrow") &&
+      "w" in d &&
+      "h" in d &&
+      Math.hypot((d as { w: number }).w, (d as { h: number }).h) < 4;
+
+    if (tooSmallShape || tooSmallMarkup || tooSmallLine) {
       setDraft(null);
       return;
     }
@@ -285,19 +331,54 @@ export function PageView({ pageIndex, scale }: Props) {
       return;
     }
     if (d.type === "textbox") {
-      const text = window.prompt("Enter text", "Text") || "Text";
-      addAnnotation({ ...(d as Annotation), text } as Annotation);
+      const tw = Math.abs((d as { w: number }).w);
+      const th = Math.abs((d as { h: number }).h);
+      const nx = Math.min((d as { x: number }).x, (d as { x: number }).x + (d as { w: number }).w);
+      const ny = Math.min((d as { y: number }).y, (d as { y: number }).y + (d as { h: number }).h);
+      const text = window.prompt("Enter text", (d as { text?: string }).text || "Text");
+      if (text === null) {
+        setDraft(null);
+        return;
+      }
+      addAnnotation({
+        ...(d as Annotation),
+        x: nx,
+        y: ny,
+        w: Math.max(tw, 40),
+        h: Math.max(th, 24),
+        text: text || "Text",
+      } as Annotation);
       return;
     }
-    addAnnotation(d as Annotation);
+
+    // Normalize negative width/height for box-like shapes
+    if (
+      d.type === "rect" ||
+      d.type === "ellipse"
+    ) {
+      const x = Math.min((d as { x: number }).x, (d as { x: number }).x + (d as { w: number }).w);
+      const y = Math.min((d as { y: number }).y, (d as { y: number }).y + (d as { h: number }).h);
+      const w = Math.abs((d as { w: number }).w);
+      const h = Math.abs((d as { h: number }).h);
+      try {
+        addAnnotation({ ...(d as Annotation), x, y, w, h } as Annotation);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not add annotation");
+        setDraft(null);
+      }
+      return;
+    }
+
+    try {
+      addAnnotation(d as Annotation);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add annotation");
+      setDraft(null);
+    }
   };
 
   if (!page) return null;
 
-  const displayW = (rotation % 180 === 0 ? baseW : baseH) * scale;
-  const displayH = (rotation % 180 === 0 ? baseH : baseW) * scale;
-
-  // For blank / already-rotated meta, width/height already swapped in store
   const cssW = page.width * scale;
   const cssH = page.height * scale;
 
@@ -312,16 +393,13 @@ export function PageView({ pageIndex, scale }: Props) {
       id={`page-${pageIndex}`}
       className={cn(
         "relative mx-auto mb-6 bg-white shadow-[0_8px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/10",
-        tool === "pan" && "cursor-grab active:cursor-grabbing",
-        tool !== "select" &&
-          tool !== "pan" &&
-          tool !== "form" &&
-          "cursor-crosshair"
+        cursorForTool(tool)
       )}
       style={{ width: cssW, height: cssH }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
       <canvas
         ref={canvasRef}
@@ -352,8 +430,6 @@ export function PageView({ pageIndex, scale }: Props) {
       <div className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white/90">
         {pageIndex + 1}
       </div>
-      {/* suppress unused */}
-      <span className="hidden">{displayW}{displayH}</span>
     </div>
   );
 }

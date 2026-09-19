@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useEditorStore } from "@/store/editorStore";
 import type { Annotation } from "@/store/types";
 import { cn } from "@/lib/utils";
@@ -11,28 +12,60 @@ interface Props {
   height: number;
 }
 
+function shiftAnnotation(ann: Annotation, dx: number, dy: number): Annotation {
+  switch (ann.type) {
+    case "highlight":
+    case "underline":
+    case "strikethrough":
+      return {
+        ...ann,
+        rects: ann.rects.map((r) => ({ ...r, x: r.x + dx, y: r.y + dy })),
+      };
+    case "pen":
+      return {
+        ...ann,
+        points: ann.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+      };
+    case "note":
+      return { ...ann, x: ann.x + dx, y: ann.y + dy };
+    default:
+      return { ...ann, x: ann.x + dx, y: ann.y + dy } as Annotation;
+  }
+}
+
 function AnnSvg({
   ann,
   scale,
   selected,
+  interactive,
   onSelect,
+  onDragStart,
 }: {
   ann: Annotation;
   scale: number;
   selected: boolean;
-  onSelect: (e: React.MouseEvent) => void;
+  interactive: boolean;
+  onSelect: (e: React.PointerEvent) => void;
+  onDragStart: (e: React.PointerEvent, ann: Annotation) => void;
 }) {
   const common = cn(
-    "pointer-events-auto cursor-pointer",
+    interactive && "pointer-events-auto cursor-move",
     selected && "outline outline-2 outline-amber-400 outline-offset-2"
   );
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!interactive) return;
+    e.stopPropagation();
+    onSelect(e);
+    onDragStart(e, ann);
+  };
 
   switch (ann.type) {
     case "highlight":
     case "underline":
     case "strikethrough":
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           {ann.rects.map((r, i) =>
             ann.type === "highlight" ? (
               <rect
@@ -68,7 +101,7 @@ function AnnSvg({
         </g>
       );
     case "pen": {
-      if (ann.points.length < 2) return null;
+      if (!ann.points || ann.points.length < 2) return null;
       const d = ann.points
         .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x * scale} ${p.y * scale}`)
         .join(" ");
@@ -81,7 +114,7 @@ function AnnSvg({
           strokeLinecap="round"
           strokeLinejoin="round"
           opacity={Math.max(0.7, ann.opacity)}
-          onClick={onSelect}
+          onPointerDown={handlePointerDown}
           className={common}
         />
       );
@@ -103,7 +136,7 @@ function AnnSvg({
             fillOpacity={ann.filled ? ann.opacity : 0}
             stroke={ann.color}
             strokeWidth={ann.strokeWidth * scale}
-            onClick={onSelect}
+            onPointerDown={handlePointerDown}
             className={common}
           />
         );
@@ -118,7 +151,7 @@ function AnnSvg({
           fillOpacity={ann.filled ? ann.opacity : 0}
           stroke={ann.color}
           strokeWidth={ann.strokeWidth * scale}
-          onClick={onSelect}
+          onPointerDown={handlePointerDown}
           className={common}
         />
       );
@@ -131,7 +164,7 @@ function AnnSvg({
       const y2 = (ann.y + ann.h) * scale;
       const markerId = `arrow-${ann.id}`;
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           {ann.type === "arrow" && (
             <defs>
               <marker
@@ -155,12 +188,21 @@ function AnnSvg({
             strokeWidth={ann.strokeWidth * scale}
             markerEnd={ann.type === "arrow" ? `url(#${markerId})` : undefined}
           />
+          {/* Wider invisible hit target */}
+          <line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="transparent"
+            strokeWidth={Math.max(12, ann.strokeWidth * 4) * scale}
+          />
         </g>
       );
     }
     case "textbox":
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           <rect
             x={ann.x * scale}
             y={ann.y * scale}
@@ -175,8 +217,8 @@ function AnnSvg({
           <foreignObject
             x={ann.x * scale}
             y={ann.y * scale}
-            width={ann.w * scale}
-            height={ann.h * scale}
+            width={Math.max(0, ann.w * scale)}
+            height={Math.max(0, ann.h * scale)}
           >
             <div
               className="h-full w-full overflow-hidden p-1 text-left"
@@ -194,7 +236,7 @@ function AnnSvg({
       );
     case "note":
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           <rect
             x={ann.x * scale}
             y={ann.y * scale}
@@ -212,14 +254,12 @@ function AnnSvg({
           >
             N
           </text>
-          {ann.text && (
-            <title>{ann.text}</title>
-          )}
+          {ann.text && <title>{ann.text}</title>}
         </g>
       );
     case "stamp":
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           <rect
             x={ann.x * scale}
             y={ann.y * scale}
@@ -248,7 +288,7 @@ function AnnSvg({
       );
     case "signature":
       return (
-        <g onClick={onSelect} className={common}>
+        <g onPointerDown={handlePointerDown} className={common}>
           <rect
             x={ann.x * scale}
             y={ann.y * scale}
@@ -291,17 +331,62 @@ export function AnnotationLayer({ pageIndex, scale, width, height }: Props) {
   const annotations = useEditorStore((s) => s.annotations);
   const selectedIds = useEditorStore((s) => s.selectedIds);
   const selectAnnotations = useEditorStore((s) => s.selectAnnotations);
+  const updateAnnotation = useEditorStore((s) => s.updateAnnotation);
+  const pushHistory = useEditorStore((s) => s.pushHistory);
   const tool = useEditorStore((s) => s.tool);
   const draft = useEditorStore((s) => s.draft);
+  const dragRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    origin: Annotation;
+    moved: boolean;
+  } | null>(null);
 
   const pageAnns = annotations.filter((a) => a.pageIndex === pageIndex);
+  const interactive = tool === "select";
+
+  const onDragStart = (e: React.PointerEvent, ann: Annotation) => {
+    if (!interactive) return;
+    e.preventDefault();
+    const drag = {
+      id: ann.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origin: structuredClone(ann),
+      moved: false,
+    };
+    dragRef.current = drag;
+
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = (ev.clientX - d.startX) / scale;
+      const dy = (ev.clientY - d.startY) / scale;
+      if (!d.moved && Math.hypot(dx, dy) < 1) return;
+      if (!d.moved) {
+        pushHistory();
+        d.moved = true;
+      }
+      updateAnnotation(d.id, shiftAnnotation(d.origin, dx, dy));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
 
   return (
     <svg
       className="absolute inset-0 z-10"
       width={width}
       height={height}
-      style={{ pointerEvents: tool === "pan" ? "none" : "auto" }}
+      style={{ pointerEvents: interactive ? "auto" : "none" }}
     >
       {pageAnns.map((ann) => (
         <AnnSvg
@@ -309,24 +394,33 @@ export function AnnotationLayer({ pageIndex, scale, width, height }: Props) {
           ann={ann}
           scale={scale}
           selected={selectedIds.includes(ann.id)}
+          interactive={interactive}
           onSelect={(e) => {
-            e.stopPropagation();
-            if (tool === "select") {
-              selectAnnotations(
-                e.shiftKey ? [...selectedIds, ann.id] : [ann.id]
-              );
-            }
+            selectAnnotations(
+              e.shiftKey
+                ? selectedIds.includes(ann.id)
+                  ? selectedIds
+                  : [...selectedIds, ann.id]
+                : [ann.id]
+            );
           }}
+          onDragStart={onDragStart}
         />
       ))}
-      {draft && draft.pageIndex === pageIndex && draft.type && (
-        <AnnSvg
-          ann={draft as Annotation}
-          scale={scale}
-          selected={false}
-          onSelect={() => {}}
-        />
-      )}
+      {draft &&
+        draft.pageIndex === pageIndex &&
+        draft.type &&
+        (draft.type !== "pen" ||
+          ((draft as { points?: unknown[] }).points?.length ?? 0) >= 1) && (
+          <AnnSvg
+            ann={draft as Annotation}
+            scale={scale}
+            selected={false}
+            interactive={false}
+            onSelect={() => {}}
+            onDragStart={() => {}}
+          />
+        )}
     </svg>
   );
 }

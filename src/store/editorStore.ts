@@ -97,11 +97,90 @@ function snapshot(s: {
   pages: PageMeta[];
   formValues: FormFieldValue[];
 }): HistorySnapshot {
+  // Must clone plain state (e.g. from get()), never immer drafts — structuredClone throws on Proxies.
   return {
     annotations: structuredClone(s.annotations),
     pages: structuredClone(s.pages),
     formValues: structuredClone(s.formValues),
   };
+}
+
+/** Map a point from pre-rotate display space to post-rotate (delta degrees CW). */
+function rotatePoint(
+  x: number,
+  y: number,
+  oldW: number,
+  oldH: number,
+  delta: number
+): { x: number; y: number } {
+  const d = ((delta % 360) + 360) % 360;
+  if (d === 0) return { x, y };
+  if (d === 90) return { x: oldH - y, y: x };
+  if (d === 180) return { x: oldW - x, y: oldH - y };
+  if (d === 270) return { x: y, y: oldW - x };
+  return { x, y };
+}
+
+function transformAnnotationForRotation(ann: Annotation, oldW: number, oldH: number, delta: number): Annotation {
+  const d = ((delta % 360) + 360) % 360;
+  if (d === 0) return ann;
+
+  const rotRect = (x: number, y: number, w: number, h: number) => {
+    const c1 = rotatePoint(x, y, oldW, oldH, d);
+    const c2 = rotatePoint(x + w, y, oldW, oldH, d);
+    const c3 = rotatePoint(x, y + h, oldW, oldH, d);
+    const c4 = rotatePoint(x + w, y + h, oldW, oldH, d);
+    const xs = [c1.x, c2.x, c3.x, c4.x];
+    const ys = [c1.y, c2.y, c3.y, c4.y];
+    const nx = Math.min(...xs);
+    const ny = Math.min(...ys);
+    return { x: nx, y: ny, w: Math.max(...xs) - nx, h: Math.max(...ys) - ny };
+  };
+
+  switch (ann.type) {
+    case "highlight":
+    case "underline":
+    case "strikethrough":
+      return {
+        ...ann,
+        rects: ann.rects.map((r) => rotRect(r.x, r.y, r.w, r.h)),
+      };
+    case "pen":
+      return {
+        ...ann,
+        points: ann.points.map((p) => rotatePoint(p.x, p.y, oldW, oldH, d)),
+      };
+    case "line":
+    case "arrow": {
+      const a = rotatePoint(ann.x, ann.y, oldW, oldH, d);
+      const b = rotatePoint(ann.x + ann.w, ann.y + ann.h, oldW, oldH, d);
+      return { ...ann, x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+    }
+    case "note": {
+      const p = rotatePoint(ann.x, ann.y, oldW, oldH, d);
+      return { ...ann, x: p.x, y: p.y };
+    }
+    case "rect":
+    case "ellipse":
+    case "textbox":
+    case "stamp":
+    case "signature": {
+      const r = rotRect(ann.x, ann.y, ann.w, ann.h);
+      return { ...ann, ...r };
+    }
+    default:
+      return ann;
+  }
+}
+
+function remapFormPageIndex(formValues: FormFieldValue[], mapFn: (pi: number) => number | null): FormFieldValue[] {
+  return formValues
+    .map((f) => {
+      const next = mapFn(f.pageIndex);
+      if (next === null) return null;
+      return { ...f, pageIndex: next };
+    })
+    .filter(Boolean) as FormFieldValue[];
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -220,7 +299,13 @@ export const useEditorStore = create<EditorState>()(
       });
     },
 
-    setTool: (tool) => set({ tool, selectedIds: tool === "select" ? get().selectedIds : [] }),
+    setTool: (tool) =>
+      set((s) => {
+        s.tool = tool;
+        s.selectedIds = tool === "select" ? s.selectedIds : [];
+        s.draft = null;
+        if (tool === "form") s.settings.showProperties = true;
+      }),
     setZoom: (zoom, mode) =>
       set({ zoom: Math.min(4, Math.max(0.25, zoom)), zoomMode: mode ?? "percent" }),
     setCurrentPage: (page) => {
@@ -260,18 +345,21 @@ export const useEditorStore = create<EditorState>()(
     setDraft: (draft) => set({ draft }),
 
     pushHistory: () => {
+      // Snapshot via get() — plain objects — not the immer draft inside set().
+      const snap = snapshot(get());
       set((s) => {
-        s.past.push(snapshot(s));
+        s.past.push(snap);
         if (s.past.length > 50) s.past.shift();
         s.future = [];
       });
     },
 
     undo: () => {
-      const { past } = get();
-      if (!past.length) return;
+      const state = get();
+      if (!state.past.length) return;
+      const currentSnap = snapshot(state);
       set((s) => {
-        s.future.push(snapshot(s));
+        s.future.push(currentSnap);
         const prev = s.past.pop()!;
         s.annotations = prev.annotations;
         s.pages = prev.pages;
@@ -281,10 +369,11 @@ export const useEditorStore = create<EditorState>()(
     },
 
     redo: () => {
-      const { future } = get();
-      if (!future.length) return;
+      const state = get();
+      if (!state.future.length) return;
+      const currentSnap = snapshot(state);
       set((s) => {
-        s.past.push(snapshot(s));
+        s.past.push(currentSnap);
         const next = s.future.pop()!;
         s.annotations = next.annotations;
         s.pages = next.pages;
@@ -298,12 +387,19 @@ export const useEditorStore = create<EditorState>()(
       set((s) => {
         const p = s.pages[pageIndex];
         if (!p) return;
-        p.rotation = (p.rotation + delta + 360) % 360;
-        if (delta % 180 !== 0) {
-          const t = p.width;
-          p.width = p.height;
-          p.height = t;
+        const oldW = p.width;
+        const oldH = p.height;
+        const d = ((delta % 360) + 360) % 360;
+        p.rotation = (p.rotation + d) % 360;
+        if (d % 180 !== 0) {
+          p.width = oldH;
+          p.height = oldW;
         }
+        s.annotations = s.annotations.map((a) =>
+          a.pageIndex === pageIndex
+            ? transformAnnotationForRotation(a, oldW, oldH, d)
+            : a
+        );
       });
     },
 
@@ -317,6 +413,11 @@ export const useEditorStore = create<EditorState>()(
           .map((a) =>
             a.pageIndex > pageIndex ? { ...a, pageIndex: a.pageIndex - 1 } : a
           );
+        s.formValues = remapFormPageIndex(s.formValues, (pi) => {
+          if (pi === pageIndex) return null;
+          if (pi > pageIndex) return pi - 1;
+          return pi;
+        });
         s.currentPage = Math.min(s.currentPage, s.pages.length - 1);
       });
     },
@@ -327,13 +428,20 @@ export const useEditorStore = create<EditorState>()(
       set((s) => {
         const [moved] = s.pages.splice(from, 1);
         s.pages.splice(to, 0, moved);
-        s.annotations = s.annotations.map((a) => {
-          let pi = a.pageIndex;
-          if (pi === from) pi = to;
-          else if (from < to && pi > from && pi <= to) pi -= 1;
-          else if (from > to && pi >= to && pi < from) pi += 1;
-          return { ...a, pageIndex: pi };
-        });
+        const mapPi = (pi: number) => {
+          if (pi === from) return to;
+          if (from < to && pi > from && pi <= to) return pi - 1;
+          if (from > to && pi >= to && pi < from) return pi + 1;
+          return pi;
+        };
+        s.annotations = s.annotations.map((a) => ({
+          ...a,
+          pageIndex: mapPi(a.pageIndex),
+        }));
+        s.formValues = s.formValues.map((f) => ({
+          ...f,
+          pageIndex: mapPi(f.pageIndex),
+        }));
         s.currentPage = to;
       });
     },
@@ -353,6 +461,9 @@ export const useEditorStore = create<EditorState>()(
         s.annotations = s.annotations.map((a) =>
           a.pageIndex >= atIndex ? { ...a, pageIndex: a.pageIndex + 1 } : a
         );
+        s.formValues = s.formValues.map((f) =>
+          f.pageIndex >= atIndex ? { ...f, pageIndex: f.pageIndex + 1 } : f
+        );
         s.currentPage = atIndex;
       });
     },
@@ -364,13 +475,23 @@ export const useEditorStore = create<EditorState>()(
       });
     },
 
-    setSearch: (query, matches) =>
+    setSearch: (query, matches) => {
+      const pages = get().pages;
+      // searchPdf returns source PDF page indices; map onto current pages[].
+      const remapped = matches
+        .map((m) => {
+          const idx = pages.findIndex((p) => p.sourceIndex === m.pageIndex);
+          if (idx < 0) return null;
+          return { ...m, pageIndex: idx };
+        })
+        .filter(Boolean) as typeof matches;
       set({
         searchQuery: query,
-        searchMatches: matches,
-        searchIndex: matches.length ? 0 : -1,
-        currentPage: matches.length ? matches[0].pageIndex : get().currentPage,
-      }),
+        searchMatches: remapped,
+        searchIndex: remapped.length ? 0 : -1,
+        currentPage: remapped.length ? remapped[0].pageIndex : get().currentPage,
+      });
+    },
 
     nextMatch: () => {
       const { searchMatches, searchIndex } = get();

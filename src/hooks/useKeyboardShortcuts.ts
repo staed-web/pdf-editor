@@ -84,6 +84,7 @@ export function useKeyboardShortcuts() {
       if (!mod && toolMap[k]) {
         e.preventDefault();
         s.setTool(toolMap[k]);
+        if (toolMap[k] === "signature") s.setDialog("signatureOpen", true);
         return;
       }
       if (e.key === "=" || e.key === "+") {

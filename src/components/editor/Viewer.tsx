@@ -12,6 +12,7 @@ export function Viewer() {
   const setZoom = useEditorStore((s) => s.setZoom);
   const currentPage = useEditorStore((s) => s.currentPage);
   const setCurrentPage = useEditorStore((s) => s.setCurrentPage);
+  const searchIndex = useEditorStore((s) => s.searchIndex);
   const tool = useEditorStore((s) => s.tool);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPanning = useRef(false);
@@ -35,18 +36,22 @@ export function Viewer() {
     }
   }, [zoomMode, pages, currentPage, setZoom]);
 
-  // Scroll current page into view when jumping
+  // Scroll current page into view when jumping / search match changes
   useEffect(() => {
     const node = document.getElementById(`page-${currentPage}`);
     if (node && scrollRef.current) {
       const parent = scrollRef.current;
       const parentRect = parent.getBoundingClientRect();
       const nodeRect = node.getBoundingClientRect();
-      if (nodeRect.top < parentRect.top || nodeRect.bottom > parentRect.bottom) {
-        node.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (
+        nodeRect.top < parentRect.top ||
+        nodeRect.bottom > parentRect.bottom ||
+        searchIndex >= 0
+      ) {
+        node.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-  }, [currentPage]);
+  }, [currentPage, searchIndex]);
 
   // Track visible page via IntersectionObserver
   useEffect(() => {

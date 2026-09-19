@@ -70,6 +70,7 @@ const GROUPS: { tools: { id: Tool; icon: React.ElementType; label: string; short
 export function ToolsRail() {
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
+  const setDialog = useEditorStore((s) => s.setDialog);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -87,7 +88,11 @@ export function ToolsRail() {
                       data-active={tool === t.id}
                       aria-label={t.label}
                       aria-pressed={tool === t.id}
-                      onClick={() => setTool(t.id)}
+                      onClick={() => {
+                        setTool(t.id);
+                        // Signature is placed after the dialog; click a page for position, or dialog uses defaults.
+                        if (t.id === "signature") setDialog("signatureOpen", true);
+                      }}
                       className={cn(tool === t.id && "shadow-inner")}
                     >
                       <Icon className="h-4 w-4" />

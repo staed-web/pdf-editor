@@ -23,7 +23,6 @@ export function PropertiesPanel() {
   const setStampLabel = useEditorStore((s) => s.setStampLabel);
   const formValues = useEditorStore((s) => s.formValues);
   const setFormValue = useEditorStore((s) => s.setFormValue);
-  const pushHistory = useEditorStore((s) => s.pushHistory);
 
   if (!show) return null;
 
@@ -49,7 +48,7 @@ export function PropertiesPanel() {
                   <HexColorPicker
                     color={ann.color}
                     onChange={(c) => {
-                      pushHistory();
+                      // Snapshot once per gesture via past check would flood; update live without history spam.
                       updateAnnotation(ann.id, { color: c });
                     }}
                     className="!w-full"

@@ -31,9 +31,99 @@ function hexToRgb(hex: string) {
   };
 }
 
+
 /** Convert top-left UI coords to pdf-lib bottom-left */
 function toPdfY(pageHeight: number, y: number, h = 0) {
   return pageHeight - y - h;
+}
+
+type DispRect = { x: number; y: number; w: number; h: number };
+type DispPoint = { x: number; y: number };
+
+/** Map annotation coords from rotated display space (pageMeta) → unrotated media box. */
+function displayToMediaPoint(
+  x: number,
+  y: number,
+  displayW: number,
+  displayH: number,
+  rotation: number
+): DispPoint {
+  const r = ((rotation % 360) + 360) % 360;
+  if (r === 0) return { x, y };
+  if (r === 90) return { x: y, y: displayW - x }; // media H = displayW
+  if (r === 180) return { x: displayW - x, y: displayH - y };
+  if (r === 270) return { x: displayH - y, y: x };
+  return { x, y };
+}
+
+function displayToMediaRect(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  displayW: number,
+  displayH: number,
+  rotation: number
+): DispRect {
+  const r = ((rotation % 360) + 360) % 360;
+  if (r === 0) return { x, y, w, h };
+  const c1 = displayToMediaPoint(x, y, displayW, displayH, r);
+  const c2 = displayToMediaPoint(x + w, y, displayW, displayH, r);
+  const c3 = displayToMediaPoint(x, y + h, displayW, displayH, r);
+  const c4 = displayToMediaPoint(x + w, y + h, displayW, displayH, r);
+  const xs = [c1.x, c2.x, c3.x, c4.x];
+  const ys = [c1.y, c2.y, c3.y, c4.y];
+  const nx = Math.min(...xs);
+  const ny = Math.min(...ys);
+  return { x: nx, y: ny, w: Math.max(...xs) - nx, h: Math.max(...ys) - ny };
+}
+
+function toMediaAnnotation(
+  ann: Annotation,
+  displayW: number,
+  displayH: number,
+  rotation: number
+): Annotation {
+  const r = ((rotation % 360) + 360) % 360;
+  if (r === 0) return ann;
+  switch (ann.type) {
+    case "highlight":
+    case "underline":
+    case "strikethrough":
+      return {
+        ...ann,
+        rects: ann.rects.map((rect) =>
+          displayToMediaRect(rect.x, rect.y, rect.w, rect.h, displayW, displayH, r)
+        ),
+      };
+    case "pen":
+      return {
+        ...ann,
+        points: ann.points.map((p) =>
+          displayToMediaPoint(p.x, p.y, displayW, displayH, r)
+        ),
+      };
+    case "line":
+    case "arrow": {
+      const a = displayToMediaPoint(ann.x, ann.y, displayW, displayH, r);
+      const b = displayToMediaPoint(ann.x + ann.w, ann.y + ann.h, displayW, displayH, r);
+      return { ...ann, x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+    }
+    case "note": {
+      const p = displayToMediaPoint(ann.x, ann.y, displayW, displayH, r);
+      return { ...ann, x: p.x, y: p.y };
+    }
+    case "rect":
+    case "ellipse":
+    case "textbox":
+    case "stamp":
+    case "signature": {
+      const box = displayToMediaRect(ann.x, ann.y, ann.w, ann.h, displayW, displayH, r);
+      return { ...ann, ...box };
+    }
+    default:
+      return ann;
+  }
 }
 
 async function embedDataUrl(doc: PDFDocument, dataUrl: string) {
@@ -342,41 +432,35 @@ export async function exportEditedPdf(opts: ExportOptions): Promise<Uint8Array> 
   const font = await out.embedFont(StandardFonts.Helvetica);
   const bold = await out.embedFont(StandardFonts.HelveticaBold);
 
-  // Build source page cache for blank inserts
   const blankSize = opts.pages.find((p) => p.sourceIndex >= 0) || {
     width: 612,
     height: 792,
   };
 
-  for (const pageMeta of opts.pages) {
+  for (let i = 0; i < opts.pages.length; i++) {
+    const pageMeta = opts.pages[i];
     let page: PDFPage;
     if (pageMeta.sourceIndex < 0) {
-      page = out.addPage([pageMeta.width || blankSize.width, pageMeta.height || blankSize.height]);
+      page = out.addPage([
+        pageMeta.width || blankSize.width,
+        pageMeta.height || blankSize.height,
+      ]);
     } else {
       const [copied] = await out.copyPages(src, [pageMeta.sourceIndex]);
       page = out.addPage(copied);
     }
 
-    if (pageMeta.rotation % 360 !== 0) {
-      const current = page.getRotation().angle;
-      page.setRotation(degrees((current + pageMeta.rotation) % 360));
-    }
+    const media = page.getSize();
+    const rotation = ((pageMeta.rotation % 360) + 360) % 360;
+    const displayW = pageMeta.width || media.width;
+    const displayH = pageMeta.height || media.height;
 
-    const { width, height } = page.getSize();
-    const pageAnns = opts.annotations.filter(
-      (a) => a.pageIndex === opts.pages.indexOf(pageMeta)
-    );
+    // Draw annotations in media-box space, then apply page rotation so they stay aligned.
+    const pageAnns = opts.annotations
+      .filter((a) => a.pageIndex === i)
+      .map((a) => toMediaAnnotation(a, displayW, displayH, rotation));
 
-    // Use logical index from pages array
-  }
-
-  // Re-walk with correct pageIndex from array position
-  const outPages = out.getPages();
-  for (let i = 0; i < opts.pages.length; i++) {
-    const page = outPages[i];
-    const { height } = page.getSize();
-    const pageAnns = opts.annotations.filter((a) => a.pageIndex === i);
-
+    const height = media.height;
     for (const ann of pageAnns) {
       switch (ann.type) {
         case "highlight":
@@ -406,6 +490,11 @@ export async function exportEditedPdf(opts: ExportOptions): Promise<Uint8Array> 
           await drawSignature(page, out, ann, height, font);
           break;
       }
+    }
+
+    if (rotation !== 0) {
+      const current = page.getRotation().angle;
+      page.setRotation(degrees((current + rotation) % 360));
     }
   }
 
