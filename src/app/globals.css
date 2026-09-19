@@ -207,3 +207,53 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
 }
+
+
+/* pdf.js text layer — transparent selectable glyphs for markup tools */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  transform-origin: 0 0;
+  z-index: 5;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.textLayer ::selection {
+  background: rgb(245 158 11 / 0.35);
+}
+.textLayer.markup-active {
+  pointer-events: auto;
+  z-index: 15;
+}
+.textLayer.markup-inactive {
+  pointer-events: none;
+  z-index: 5;
+}
+.page-search-hit {
+  pointer-events: none;
+  position: absolute;
+  z-index: 12;
+  background: rgb(251 191 36 / 0.28);
+  border-radius: 2px;
+}
+.page-search-hit.current {
+  background: rgb(245 158 11 / 0.45);
+  outline: 2px solid rgb(217 119 6);
+}

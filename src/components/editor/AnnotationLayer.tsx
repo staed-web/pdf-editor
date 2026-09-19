@@ -383,7 +383,7 @@ export function AnnotationLayer({ pageIndex, scale, width, height }: Props) {
 
   return (
     <svg
-      className="absolute inset-0 z-10"
+      className={interactive ? "absolute inset-0 z-20" : "absolute inset-0 z-10"}
       width={width}
       height={height}
       style={{ pointerEvents: interactive ? "auto" : "none" }}

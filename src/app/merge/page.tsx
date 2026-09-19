@@ -9,6 +9,8 @@ import { FileQueue } from "@/components/tools/FileQueue";
 import { ResultBar } from "@/components/tools/ResultBar";
 import { ProgressBar } from "@/components/tools/ProgressBar";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { getTool } from "@/lib/tools";
 import { useToolFiles } from "@/hooks/useToolFiles";
 import { mergePdfFiles } from "@/lib/pdf/ops";
@@ -21,6 +23,7 @@ export default function MergePage() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<Uint8Array | null>(null);
+  const [bookmarks, setBookmarks] = useState(true);
 
   const run = async () => {
     if (files.length < 2) {
@@ -35,10 +38,17 @@ export default function MergePage() {
         buffers.push(await files[i].file.arrayBuffer());
         setProgress(10 + Math.round((i / files.length) * 70));
       }
-      const bytes = await mergePdfFiles(buffers);
+      const bytes = await mergePdfFiles(
+        buffers,
+        bookmarks
+          ? { bookmarksFromNames: files.map((f) => f.file.name) }
+          : undefined
+      );
       setResult(bytes);
       setProgress(100);
-      toast.success("Merged successfully");
+      toast.success(
+        bookmarks ? "Merged with bookmark outline" : "Merged successfully"
+      );
     } catch (e) {
       console.error(e);
       toast.error("Merge failed — check that files are valid PDFs");
@@ -49,7 +59,17 @@ export default function MergePage() {
 
   return (
     <MarketingShell>
-      <ToolShell tool={tool}>
+      <ToolShell
+        tool={tool}
+        options={
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="bm">Bookmarks from filenames</Label>
+              <Switch id="bm" checked={bookmarks} onCheckedChange={setBookmarks} />
+            </div>
+          </>
+        }
+      >
         <DropZone
           accept="application/pdf"
           multiple
@@ -76,7 +96,13 @@ export default function MergePage() {
             Merge {files.length || ""} PDFs
           </Button>
           {files.length > 0 && (
-            <Button variant="outline" onClick={() => { clear(); setResult(null); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                clear();
+                setResult(null);
+              }}
+            >
               Clear
             </Button>
           )}

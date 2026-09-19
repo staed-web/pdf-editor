@@ -413,6 +413,7 @@ export async function comparePdfs(
   imageDiffPct: number;
   previewA?: string;
   previewB?: string;
+  heatmap?: string;
 }> {
   const textA = await extractTextFromPdf(a);
   const textB = await extractTextFromPdf(b);
@@ -470,6 +471,34 @@ export async function comparePdfs(
   const imageDiffPct = Math.round((diff / px) * 1000) / 10;
   const previewA = cA.toDataURL("image/jpeg", 0.7);
   const previewB = cB.toDataURL("image/jpeg", 0.7);
+
+  // Heatmap: red where pixels differ, dimmed A underneath
+  const cH = document.createElement("canvas");
+  cH.width = w;
+  cH.height = h;
+  const ctxH = cH.getContext("2d")!;
+  ctxH.drawImage(cA, 0, 0);
+  const heat = ctxH.getImageData(0, 0, w, h);
+  const hd = heat.data;
+  for (let i = 0; i < dA.length; i += 4) {
+    const dr = Math.abs(dA[i] - dB[i]);
+    const dg = Math.abs(dA[i + 1] - dB[i + 1]);
+    const db = Math.abs(dA[i + 2] - dB[i + 2]);
+    const changed = dr + dg + db > 40;
+    if (changed) {
+      hd[i] = 220;
+      hd[i + 1] = 40;
+      hd[i + 2] = 40;
+      hd[i + 3] = 220;
+    } else {
+      hd[i] = Math.round(dA[i] * 0.55);
+      hd[i + 1] = Math.round(dA[i + 1] * 0.55);
+      hd[i + 2] = Math.round(dA[i + 2] * 0.55);
+    }
+  }
+  ctxH.putImageData(heat, 0, 0);
+  const heatmap = cH.toDataURL("image/jpeg", 0.75);
+
   pageA.cleanup();
   pageB.cleanup();
   docA.destroy();
@@ -490,7 +519,7 @@ export async function comparePdfs(
     fullB.slice(0, 2000),
   ].join("\n");
 
-  return { report, textDiffPct, imageDiffPct, previewA, previewB };
+  return { report, textDiffPct, imageDiffPct, previewA, previewB, heatmap };
 }
 
 /** Re-render pages in grayscale */

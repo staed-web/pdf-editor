@@ -25,6 +25,7 @@
     "@serwist/next": "^9.5.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "docx": "^9.7.1",
     "file-saver": "^2.0.5",
     "framer-motion": "^13.4.0",
     "heic2any": "^0.0.4",

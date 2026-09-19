@@ -50,6 +50,8 @@ export interface BaseAnnotation {
 export interface MarkupAnnotation extends BaseAnnotation {
   type: "highlight" | "underline" | "strikethrough";
   rects: { x: number; y: number; w: number; h: number }[];
+  /** Selected text captured from the text layer (optional) */
+  text?: string;
 }
 
 export interface PenAnnotation extends BaseAnnotation {

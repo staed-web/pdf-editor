@@ -4,7 +4,12 @@ import {
   rgb,
   degrees,
   PageSizes,
+  PDFName,
+  PDFDict,
+  PDFNumber,
+  PDFHexString,
   type PDFPage,
+  type PDFRef,
 } from "pdf-lib";
 import { ensurePdfWorker, loadPdfDocument, pdfjs } from "./loader";
 
@@ -17,17 +22,69 @@ export async function loadPdf(bytes: ArrayBuffer | Uint8Array) {
   });
 }
 
-export async function mergePdfFiles(files: ArrayBuffer[]): Promise<Uint8Array> {
+export async function mergePdfFiles(
+  files: ArrayBuffer[],
+  opts?: { bookmarksFromNames?: string[] }
+): Promise<Uint8Array> {
   const out = await PDFDocument.create();
-  for (const f of files) {
-    const src = await loadPdf(f);
+  const bookmarkStarts: { title: string; pageIndex: number }[] = [];
+  let pageOffset = 0;
+  for (let fi = 0; fi < files.length; fi++) {
+    const src = await loadPdf(files[fi]);
     const pages = await out.copyPages(src, src.getPageIndices());
+    if (opts?.bookmarksFromNames?.[fi]) {
+      const title =
+        opts.bookmarksFromNames[fi].replace(/\.pdf$/i, "").trim() ||
+        `Document ${fi + 1}`;
+      bookmarkStarts.push({ title, pageIndex: pageOffset });
+    }
     pages.forEach((p) => out.addPage(p));
+    pageOffset += pages.length;
   }
   out.setProducer("InstantPDFEdit");
   out.setCreator("InstantPDFEdit");
+  if (bookmarkStarts.length) {
+    try {
+      attachSimpleOutlines(out, bookmarkStarts);
+    } catch {
+      /* best-effort */
+    }
+  }
   return out.save({ useObjectStreams: true });
 }
+
+function attachSimpleOutlines(
+  doc: PDFDocument,
+  items: { title: string; pageIndex: number }[]
+) {
+  const context = doc.context;
+  const pages = doc.getPages();
+  if (!items.length || !pages.length) return;
+
+  const outlinesRef = context.nextRef();
+  const itemRefs: PDFRef[] = items.map(() => context.nextRef());
+
+  items.forEach((item, i) => {
+    const page = pages[Math.min(item.pageIndex, pages.length - 1)];
+    const dest = context.obj([page.ref, PDFName.of("Fit")]);
+    const map = new Map();
+    map.set(PDFName.of("Title"), PDFHexString.fromText(item.title));
+    map.set(PDFName.of("Parent"), outlinesRef);
+    map.set(PDFName.of("Dest"), dest);
+    if (i > 0) map.set(PDFName.of("Prev"), itemRefs[i - 1]);
+    if (i < items.length - 1) map.set(PDFName.of("Next"), itemRefs[i + 1]);
+    context.assign(itemRefs[i], PDFDict.fromMapWithContext(map, context));
+  });
+
+  const outlinesMap = new Map();
+  outlinesMap.set(PDFName.of("Type"), PDFName.of("Outlines"));
+  outlinesMap.set(PDFName.of("First"), itemRefs[0]);
+  outlinesMap.set(PDFName.of("Last"), itemRefs[itemRefs.length - 1]);
+  outlinesMap.set(PDFName.of("Count"), PDFNumber.of(items.length));
+  context.assign(outlinesRef, PDFDict.fromMapWithContext(outlinesMap, context));
+  doc.catalog.set(PDFName.of("Outlines"), outlinesRef);
+}
+
 
 export async function splitByRanges(
   source: ArrayBuffer,
@@ -487,43 +544,139 @@ export async function renderPdfPages(
   return results;
 }
 
-/** Compress by re-rendering pages as JPEG at reduced quality into a new PDF */
+/** Compress by re-rendering pages as JPEG with quality + max-edge downsample */
 export async function compressPdf(
   source: ArrayBuffer,
   quality: "low" | "medium" | "high" = "medium"
-): Promise<{ bytes: Uint8Array; originalSize: number; newSize: number }> {
-  const q = quality === "low" ? 0.45 : quality === "high" ? 0.82 : 0.65;
-  const scale = quality === "low" ? 1.2 : quality === "high" ? 1.8 : 1.5;
-  const pages = await renderPdfPages(source, {
-    format: "jpeg",
-    quality: q,
-    scale,
-  });
+): Promise<{
+  bytes: Uint8Array;
+  originalSize: number;
+  newSize: number;
+  pageCount: number;
+  scaleUsed: number;
+  jpegQuality: number;
+}> {
+  const presets = {
+    low: { q: 0.38, scale: 1.0, maxEdge: 1280 },
+    medium: { q: 0.58, scale: 1.35, maxEdge: 1600 },
+    high: { q: 0.78, scale: 1.7, maxEdge: 2200 },
+  } as const;
+  const { q, scale, maxEdge } = presets[quality];
+  ensurePdfWorker();
+  const doc = await loadPdfDocument(source.slice(0));
   const out = await PDFDocument.create();
-  for (const p of pages) {
-    const img = await out.embedJpg(p.bytes);
-    const page = out.addPage([img.width, img.height]);
-    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const base = page.getViewport({ scale: 1 });
+    const longEdge = Math.max(base.width, base.height);
+    const fit = Math.min(scale, maxEdge / Math.max(1, longEdge));
+    const viewport = page.getViewport({ scale: fit });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+    const ctx = canvas.getContext("2d")!;
+    // White fill avoids black transparency in JPEG
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    // Mild sharpen via contrast for low quality scans
+    if (quality === "low") {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = img.data;
+      for (let p = 0; p < d.length; p += 4) {
+        d[p] = Math.min(255, d[p] * 1.04);
+        d[p + 1] = Math.min(255, d[p + 1] * 1.04);
+        d[p + 2] = Math.min(255, d[p + 2] * 1.04);
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+    const blob: Blob = await new Promise((res) =>
+      canvas.toBlob((b) => res(b!), "image/jpeg", q)
+    );
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const img = await out.embedJpg(bytes);
+    // Preserve original page size in PDF points
+    const pdfPage = out.addPage([base.width, base.height]);
+    pdfPage.drawImage(img, {
+      x: 0,
+      y: 0,
+      width: base.width,
+      height: base.height,
+    });
+    page.cleanup();
   }
+  doc.destroy();
   const bytes = await out.save({ useObjectStreams: true });
   return {
     bytes,
     originalSize: source.byteLength,
     newSize: bytes.byteLength,
+    pageCount: out.getPageCount(),
+    scaleUsed: scale,
+    jpegQuality: q,
   };
 }
 
 export async function redactRegions(
   source: ArrayBuffer,
-  regions: { pageIndex: number; x: number; y: number; w: number; h: number }[]
+  regions: { pageIndex: number; x: number; y: number; w: number; h: number }[],
+  opts: { hardWipe?: boolean } = {}
 ): Promise<Uint8Array> {
+  const hardWipe = opts.hardWipe !== false;
+  const byPage = new Map<number, typeof regions>();
+  for (const r of regions) {
+    const list = byPage.get(r.pageIndex) || [];
+    list.push(r);
+    byPage.set(r.pageIndex, list);
+  }
+
+  if (hardWipe && byPage.size > 0) {
+    // Rasterize affected pages with black boxes burned in (removes underlying text/images).
+    ensurePdfWorker();
+    const jsDoc = await loadPdfDocument(source.slice(0));
+    const src = await loadPdf(source);
+    const out = await PDFDocument.create();
+    const all = src.getPageIndices();
+    for (const i of all) {
+      if (!byPage.has(i)) {
+        const [copied] = await out.copyPages(src, [i]);
+        out.addPage(copied);
+        continue;
+      }
+      const page = await jsDoc.getPage(i + 1);
+      const scale = 2;
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      ctx.fillStyle = "#000";
+      for (const r of byPage.get(i)!) {
+        ctx.fillRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
+      }
+      const blob: Blob = await new Promise((res) =>
+        canvas.toBlob((b) => res(b!), "image/jpeg", 0.92)
+      );
+      const jpg = new Uint8Array(await blob.arrayBuffer());
+      const img = await out.embedJpg(jpg);
+      const base = page.getViewport({ scale: 1 });
+      const pdfPage = out.addPage([base.width, base.height]);
+      pdfPage.drawImage(img, { x: 0, y: 0, width: base.width, height: base.height });
+      page.cleanup();
+    }
+    jsDoc.destroy();
+    return out.save({ useObjectStreams: true });
+  }
+
   const src = await loadPdf(source);
   const pages = src.getPages();
   for (const r of regions) {
     const page = pages[r.pageIndex];
     if (!page) continue;
     const { height } = page.getSize();
-    // UI coords are top-left; pdf-lib is bottom-left
     const y = height - r.y - r.h;
     page.drawRectangle({
       x: r.x,
