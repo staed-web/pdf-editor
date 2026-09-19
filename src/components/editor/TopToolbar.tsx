@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FileUp,
   Download,
@@ -45,6 +45,12 @@ export function TopToolbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    const open = () => setSearchOpen(true);
+    window.addEventListener("ipe:open-search", open);
+    return () => window.removeEventListener("ipe:open-search", open);
+  }, []);
 
   const fileName = useEditorStore((s) => s.fileName);
   const pdfBytes = useEditorStore((s) => s.pdfBytes);
@@ -171,19 +177,21 @@ export function TopToolbar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-zinc-800/80 bg-zinc-950/95 px-2 backdrop-blur">
+      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-zinc-200 bg-white/95 px-2 backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-950/95">
         <div className="flex items-center gap-1.5 pr-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/20">
-            <span className="text-xs font-black text-zinc-950">S</span>
-          </div>
-          <div className="hidden min-w-0 flex-col sm:flex">
-            <span className="text-[11px] font-semibold tracking-wide text-amber-400/90">
-              STAED
-            </span>
-            <span className="max-w-[160px] truncate text-xs text-zinc-300">
-              {fileName || "PDF Editor"}
-            </span>
-          </div>
+          <a href="/" className="flex items-center gap-1.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/20">
+              <span className="text-xs font-black text-zinc-950">I</span>
+            </div>
+            <div className="hidden min-w-0 flex-col sm:flex">
+              <span className="text-[11px] font-semibold tracking-wide text-amber-600 dark:text-amber-400/90">
+                InstantPDFEdit
+              </span>
+              <span className="max-w-[180px] truncate text-xs text-zinc-500 dark:text-zinc-300">
+                {fileName || "PDF Editor"}
+              </span>
+            </div>
+          </a>
         </div>
 
         <Separator orientation="vertical" className="mx-1 h-6" />

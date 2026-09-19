@@ -1,30 +1,36 @@
-# Staed PDF Editor
+# InstantPDFEdit
 
-A polished, privacy-first PDF editor that runs entirely in your browser. Annotate, rearrange pages, fill forms, sign, search, and export — no uploads, no account required.
+**Every PDF tool. Instantly.**
 
-**Live repo:** https://github.com/staed-web/pdf-editor
+A premium, privacy-first PDF suite that runs entirely in your browser — merge, split, compress, convert, annotate, sign, protect, OCR, and more. The full editor is one tool among many.
 
-## Features
+**Repo:** https://github.com/staed-web/pdf-editor
 
-| Area | Capabilities |
-|------|----------------|
-| **Open / import** | Drag & drop, file picker, recent files (IndexedDB) |
-| **Viewer** | Multi-page, zoom (fit width / fit page / %), pan, keyboard shortcuts, thumbnails, page jump |
-| **Annotations** | Highlight, underline, strikethrough, pen, sticky notes, text boxes, shapes (rect / ellipse / arrow / line), stamps, signature (draw or type) — burned into export via pdf-lib |
-| **Page tools** | Rotate, delete, reorder (drag thumbnails), insert blank, extract page, merge another PDF |
-| **Forms** | Fill AcroForm fields when present; optional flatten on export |
-| **Search** | Text search with match navigation |
-| **Export** | Download edited PDF; print |
-| **History** | Undo / redo; select & delete annotations |
-| **Settings** | Theme (system / light / dark), default colors, shortcuts cheat sheet |
+## Highlights
+
+- **Private by design** — processed in-browser with pdf.js / pdf-lib; files are not uploaded for core tools
+- **Tool hub** — categorized grid, search/filter, consistent tool shells
+- **Flagship editor** at `/edit` — annotations, signatures, forms, search, page ops, export
+- **Light & dark** — light-first with system toggle; preference persisted
+- **Real downloads** — no fake progress bars without results
+
+## Tool categories
+
+| Category | Tools |
+|----------|--------|
+| Organize | Merge, Split, Organize, Rotate, Extract, Delete pages |
+| Optimize | Compress, Repair |
+| Convert | JPG/PNG/Images↔PDF, Word/Excel/PPT/HTML paths, PDF→Word/Excel |
+| Edit | Full editor, Annotate, Crop, Watermark, Page numbers, Header/footer, Redact |
+| Security | Protect, Unlock, Flatten |
+| Sign & Forms | Sign, Fill form |
+| AI / Smart | OCR (Tesseract.js), Summarize / outline |
 
 ## Stack
 
-- **Next.js** (App Router) + TypeScript + Tailwind CSS
-- **Radix UI** primitives (shadcn-style)
-- **pdf.js** for rendering · **pdf-lib** for export / page ops
-- **Zustand** + Immer for editor state · **Framer Motion** · **Sonner** toasts
-- **IndexedDB** (`idb`) for recent files & settings
+- Next.js App Router · TypeScript · Tailwind CSS · Radix / shadcn-style UI
+- pdf.js · pdf-lib · JSZip · Mammoth · SheetJS · Tesseract.js
+- Zustand · Framer Motion · Sonner · IndexedDB
 
 ## Run locally
 
@@ -36,25 +42,23 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
-npm run build   # production build (must pass)
-npm start       # serve production build
+npm run build
+npm start
 ```
 
-A sample PDF is available at `/sample.pdf` (also via the empty-state “Try sample PDF” button).
+Sample PDF: `/sample.pdf`.
 
-## Architecture notes
+## Architecture
 
-- All processing is **client-side**. The PDF never leaves the browser for editing.
-- Annotations are stored in page coordinates and composited onto pages at export time with pdf-lib.
-- Page ops (rotate / delete / reorder / blank insert) are applied when building the export document.
-- Form field values are written back with pdf-lib; enable **Flatten forms on export** in Settings to burn values into page content.
+Shared toolkit in `src/lib/pdf/` (ops + loader + editor export). Marketing chrome in `src/components/site/`. Reusable tool UI in `src/components/tools/`. Tool registry in `src/lib/tools.ts`.
 
-## Known gaps (v1)
+## Known limits
 
-- Markup tools (highlight / underline / strikethrough) use drag rectangles rather than true text-selection quads.
-- Free-text editing of existing PDF content (content stream rewrite) is not supported — overlay / burn-in model only.
-- Complex XFA forms and encrypted PDFs have limited support.
-- Thumbnail reorder is drag-and-drop within the sidebar; large documents may feel heavier in memory.
+- Markup in the editor uses drag rects (not full text-selection quads)
+- Word/Excel/PPT conversions are best-effort client-side
+- Compress works best on image-heavy PDFs
+- Redact draws black boxes (not cryptographic content removal)
+- Encrypted PDF unlock depends on pdf-lib support for the encryption scheme
 
 ## License
 

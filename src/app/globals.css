@@ -7,6 +7,8 @@
   --muted: #71717a;
   --border: #e4e4e7;
   --accent: #f59e0b;
+  --card: #ffffff;
+  --ring: #f59e0b;
 }
 
 .dark,
@@ -17,6 +19,8 @@
   --muted: #a1a1aa;
   --border: #27272a;
   --accent: #f59e0b;
+  --card: #18181b;
+  --ring: #f59e0b;
 }
 
 @theme inline {
@@ -42,12 +46,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Prefer dark chrome for the editor by default */
 html {
+  color-scheme: light;
+}
+html.dark {
   color-scheme: dark;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -56,15 +61,21 @@ html {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #d4d4d8;
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
   border: 2px solid transparent;
   background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }
 
 @keyframes fade-in {
@@ -75,11 +86,16 @@ html {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
 .animate-in {
   animation: fade-in 0.15s ease-out;
 }
 .fade-in-0 { animation-name: fade-in; }
 .zoom-in-95 { animation-name: zoom-in-95; }
+.animate-float { animation: float 4s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -88,4 +104,14 @@ html {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Soft depth utility surfaces */
+.surface-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.04);
+}
+.dark .surface-card {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
 }

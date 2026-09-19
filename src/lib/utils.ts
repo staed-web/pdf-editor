@@ -9,9 +9,10 @@ export function downloadBlob(data: Blob | Uint8Array | ArrayBuffer, filename: st
   const blob =
     data instanceof Blob
       ? data
-      : new Blob([data instanceof ArrayBuffer ? data : new Uint8Array(data)], {
-          type: "application/pdf",
-        });
+      : new Blob(
+          [data instanceof ArrayBuffer ? data : toArrayBuffer(data)],
+          { type: "application/pdf" }
+        );
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

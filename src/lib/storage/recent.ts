@@ -21,7 +21,7 @@ let dbPromise: Promise<IDBPDatabase<PdfEditorDB>> | null = null;
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<PdfEditorDB>("staed-pdf-editor", 1, {
+    dbPromise = openDB<PdfEditorDB>("instantpdfedit", 1, {
       upgrade(db) {
         const meta = db.createObjectStore("recentMeta", { keyPath: "id" });
         meta.createIndex("by-lastOpened", "lastOpened");

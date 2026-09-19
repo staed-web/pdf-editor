@@ -434,8 +434,8 @@ export async function exportEditedPdf(opts: ExportOptions): Promise<Uint8Array> 
   } catch { /* */ }
 
   out.setTitle(src.getTitle() || "Edited PDF");
-  out.setProducer("Staed PDF Editor");
-  out.setCreator("Staed PDF Editor");
+  out.setProducer("InstantPDFEdit");
+  out.setCreator("InstantPDFEdit");
 
   return out.save({ useObjectStreams: true });
 }

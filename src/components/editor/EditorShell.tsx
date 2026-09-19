@@ -26,7 +26,7 @@ export function EditorShell() {
   }, [initSettings]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <ThemeSync />
       <TopToolbar />
       <div className="flex min-h-0 flex-1">
@@ -45,13 +45,7 @@ export function EditorShell() {
       <SignatureDialog />
       <SettingsDialog />
       <ShortcutsDialog />
-      <Toaster
-        theme="dark"
-        position="bottom-right"
-        toastOptions={{
-          className: "border border-zinc-700 bg-zinc-900 text-zinc-100",
-        }}
-      />
+      <Toaster position="bottom-right" richColors closeButton />
     </div>
   );
 }

@@ -59,13 +59,13 @@ export function EmptyState() {
       >
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-2xl shadow-amber-500/25">
-            <span className="text-xl font-black text-zinc-950">S</span>
+            <span className="text-xl font-black text-zinc-950">I</span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-50">
-            Staed PDF Editor
+            InstantPDFEdit
           </h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Annotate, rearrange, sign, and export — entirely in your browser.
+            Every PDF tool. Instantly. Annotate, rearrange, sign — entirely in your browser.
           </p>
         </div>
 

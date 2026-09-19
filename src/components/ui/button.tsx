@@ -13,12 +13,13 @@ const buttonVariants = cva(
         default:
           "bg-amber-500 text-zinc-950 shadow-sm hover:bg-amber-400",
         secondary:
-          "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/80",
-        ghost: "hover:bg-zinc-800/80 text-zinc-300 hover:text-zinc-50",
+          "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:border-zinc-700/80",
+        ghost:
+          "hover:bg-zinc-100 text-zinc-700 hover:text-zinc-950 dark:hover:bg-zinc-800/80 dark:text-zinc-300 dark:hover:text-zinc-50",
         outline:
-          "border border-zinc-700 bg-transparent hover:bg-zinc-800/60 text-zinc-200",
+          "border border-zinc-300 bg-transparent hover:bg-zinc-100 text-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-800/60 dark:text-zinc-200",
         destructive: "bg-red-600/90 text-white hover:bg-red-500",
-        tool: "h-9 w-9 p-0 rounded-xl text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800 data-[active=true]:bg-amber-500/15 data-[active=true]:text-amber-400 data-[active=true]:ring-1 data-[active=true]:ring-amber-500/40",
+        tool: "h-9 w-9 p-0 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 data-[active=true]:bg-amber-500/15 data-[active=true]:text-amber-600 data-[active=true]:ring-1 data-[active=true]:ring-amber-500/40 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-800 dark:data-[active=true]:text-amber-400",
       },
       size: {
         default: "h-9 px-3.5 py-2",

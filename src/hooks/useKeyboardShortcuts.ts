@@ -32,7 +32,7 @@ export function useKeyboardShortcuts() {
       if (mod && e.key.toLowerCase() === "f") {
         e.preventDefault();
         // Focus search via custom event
-        window.dispatchEvent(new CustomEvent("staed:open-search"));
+        window.dispatchEvent(new CustomEvent("ipe:open-search"));
         return;
       }
       if (mod && e.key.toLowerCase() === "s") {
