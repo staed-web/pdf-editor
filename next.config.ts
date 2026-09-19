@@ -30,6 +30,7 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  transpilePackages: ["@cantoo/pdf-lib"],
 };
 
 export default withSerwist(nextConfig);

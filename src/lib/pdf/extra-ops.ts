@@ -15,7 +15,7 @@ import {
   PDFString,
 } from "pdf-lib";
 import JSZip from "jszip";
-import { ensurePdfWorker, loadPdfDocument } from "./loader";
+import { ensurePdfWorker, loadPdfDocument, pdfjs } from "./loader";
 import {
   loadPdf,
   renderPdfPages,
@@ -1211,10 +1211,143 @@ function drawCode128Png(text: string, w: number, h: number): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
+/** Estimate skew angle (degrees) via horizontal projection variance. */
+function estimateSkewAngle(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number
+): number {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  // Downsample binary row ink counts at candidate angles
+  const angles: number[] = [];
+  for (let a = -8; a <= 8; a += 0.5) angles.push(a);
+  let best = 0;
+  let bestScore = -1;
+  for (const ang of angles) {
+    const rad = (ang * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const bins = new Float64Array(h);
+    // Sample every 3rd pixel for speed
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 3) {
+        const i = (y * w + x) * 4;
+        const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        if (g > 200) continue; // background
+        const yr = Math.round(y * cos + x * sin);
+        if (yr >= 0 && yr < h) bins[yr]++;
+      }
+    }
+    // Score = variance of row ink (text lines → sharp peaks when upright)
+    let mean = 0;
+    let n = 0;
+    for (let i = 0; i < h; i++) {
+      if (bins[i] > 0) {
+        mean += bins[i];
+        n++;
+      }
+    }
+    mean = n ? mean / n : 0;
+    let varSum = 0;
+    for (let i = 0; i < h; i++) {
+      const diff = bins[i] - mean;
+      varSum += diff * diff;
+    }
+    if (varSum > bestScore) {
+      bestScore = varSum;
+      best = ang;
+    }
+  }
+  // Ignore tiny noise angles
+  return Math.abs(best) < 0.25 ? 0 : best;
+}
+
+function rotateCanvas(
+  src: HTMLCanvasElement,
+  angleDeg: number
+): HTMLCanvasElement {
+  if (!angleDeg) return src;
+  const rad = (angleDeg * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const w = src.width;
+  const h = src.height;
+  const out = document.createElement("canvas");
+  out.width = Math.ceil(w * cos + h * sin);
+  out.height = Math.ceil(w * sin + h * cos);
+  const ctx = out.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.translate(out.width / 2, out.height / 2);
+  ctx.rotate(-rad); // negate: positive detected skew → rotate opposite
+  ctx.drawImage(src, -w / 2, -h / 2);
+  return out;
+}
+
+/** Deskew pages: detect skew angle + rotate + contrast boost. */
+export async function deskewPdf(
+  source: ArrayBuffer
+): Promise<{ bytes: Uint8Array; angles: number[] }> {
+  ensurePdfWorker();
+  const doc = await loadPdfDocument(source.slice(0));
+  const out = await PDFDocument.create();
+  const angles: number[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const scale = 1.5;
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const angle = estimateSkewAngle(ctx, canvas.width, canvas.height);
+    angles.push(angle);
+    let work = rotateCanvas(canvas, angle);
+    // Mild contrast boost after straighten
+    const wctx = work.getContext("2d")!;
+    const img = wctx.getImageData(0, 0, work.width, work.height);
+    const d = img.data;
+    const factor = 1.25;
+    const intercept = 128 * (1 - factor);
+    for (let p = 0; p < d.length; p += 4) {
+      d[p] = Math.min(255, Math.max(0, d[p] * factor + intercept));
+      d[p + 1] = Math.min(255, Math.max(0, d[p + 1] * factor + intercept));
+      d[p + 2] = Math.min(255, Math.max(0, d[p + 2] * factor + intercept));
+    }
+    wctx.putImageData(img, 0, 0);
+    const blob: Blob = await new Promise((res) =>
+      work.toBlob((b) => res(b!), "image/jpeg", 0.9)
+    );
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const jpg = await out.embedJpg(bytes);
+    const base = page.getViewport({ scale: 1 });
+    // Keep original page size; image may be slightly larger after rotate
+    const pdfPage = out.addPage([base.width, base.height]);
+    pdfPage.drawImage(jpg, {
+      x: 0,
+      y: 0,
+      width: base.width,
+      height: base.height,
+    });
+    page.cleanup();
+  }
+  doc.destroy();
+  out.setProducer("InstantPDFEdit");
+  return { bytes: await out.save({ useObjectStreams: true }), angles };
+}
+
 export async function scanEnhance(
   source: ArrayBuffer,
   mode: "contrast" | "threshold" | "deskew-approx" = "contrast"
 ): Promise<Uint8Array> {
+  if (mode === "deskew-approx") {
+    const { bytes } = await deskewPdf(source);
+    return bytes;
+  }
   return canvasFilterPdf(
     source,
     (ctx, w, h) => {
@@ -1227,7 +1360,6 @@ export async function scanEnhance(
           d[i] = d[i + 1] = d[i + 2] = v;
         }
       } else {
-        // contrast boost + slight deskew approx via no-op rotate detection
         const factor = 1.45;
         const intercept = 128 * (1 - factor);
         for (let i = 0; i < d.length; i += 4) {
@@ -1237,10 +1369,6 @@ export async function scanEnhance(
         }
       }
       ctx.putImageData(img, 0, 0);
-      if (mode === "deskew-approx") {
-        // Tiny auto-level already applied; visual "deskew" note: full Hough is heavy —
-        // apply slight sharpening by redraw
-      }
     },
     0.9,
     1.6
@@ -1278,16 +1406,117 @@ export async function removeAnnotations(
 export async function extractEmbeddedImages(
   source: ArrayBuffer
 ): Promise<{ name: string; bytes: Uint8Array; mime: string }[]> {
-  // Render pages as images + try operator list for XObject names (best-effort)
-  const pages = await renderPdfPages(source, {
-    format: "png",
-    scale: 1.5,
-  });
-  return pages.map((p, i) => ({
-    name: `page_${i + 1}.png`,
-    bytes: p.bytes,
-    mime: "image/png",
-  }));
+  ensurePdfWorker();
+  const doc = await loadPdfDocument(source.slice(0));
+  const results: { name: string; bytes: Uint8Array; mime: string }[] = [];
+  let imgIdx = 0;
+
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ops: any = await page.getOperatorList();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const common: any = await (page as any).commonObjs;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const objs: any = (page as any).objs;
+      const fns: number[] = ops.fnArray || [];
+      const args: unknown[] = ops.argsArray || [];
+      const OPS = pdfjs.OPS;
+      const paintOps = new Set([
+        OPS.paintImageXObject,
+        OPS.paintInlineImageXObject,
+        OPS.paintImageMaskXObject,
+        OPS.paintImageXObjectRepeat,
+        OPS.paintInlineImageXObjectGroup,
+      ]);
+      const seen = new Set<string>();
+      for (let k = 0; k < fns.length; k++) {
+        const fn = fns[k];
+        if (!paintOps.has(fn)) continue;
+        {
+          const arg = args[k];
+          const name =
+            Array.isArray(arg) && typeof arg[0] === "string"
+              ? arg[0]
+              : typeof arg === "string"
+                ? arg
+                : null;
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          let imgData: { data?: Uint8ClampedArray; width?: number; height?: number; kind?: number } | null = null;
+          try {
+            imgData = await new Promise((resolve) => {
+              try {
+                if (objs?.has?.(name)) {
+                  objs.get(name, (data: unknown) => resolve(data as typeof imgData));
+                } else if (common?.has?.(name)) {
+                  common.get(name, (data: unknown) => resolve(data as typeof imgData));
+                } else {
+                  resolve(null);
+                }
+              } catch {
+                resolve(null);
+              }
+            });
+          } catch {
+            /* */
+          }
+          if (imgData?.data && imgData.width && imgData.height) {
+            const c = document.createElement("canvas");
+            c.width = imgData.width;
+            c.height = imgData.height;
+            const ctx = c.getContext("2d")!;
+            const rgba = new Uint8ClampedArray(imgData.width * imgData.height * 4);
+            const src = imgData.data;
+            // kind 1=GRAYSCALE_1BPP, 2=RGB_24BPP, 3=RGBA_32BPP (pdf.js ImageKind)
+            const kind = imgData.kind ?? (src.length >= imgData.width * imgData.height * 4 ? 3 : 2);
+            if (kind === 3 || src.length >= imgData.width * imgData.height * 4) {
+              rgba.set(src.subarray(0, rgba.length));
+            } else if (kind === 2 || src.length >= imgData.width * imgData.height * 3) {
+              for (let p = 0, q = 0; p < rgba.length; p += 4, q += 3) {
+                rgba[p] = src[q];
+                rgba[p + 1] = src[q + 1];
+                rgba[p + 2] = src[q + 2];
+                rgba[p + 3] = 255;
+              }
+            } else {
+              for (let p = 0, q = 0; p < rgba.length; p += 4, q++) {
+                const v = src[q] ?? 0;
+                rgba[p] = rgba[p + 1] = rgba[p + 2] = v;
+                rgba[p + 3] = 255;
+              }
+            }
+            ctx.putImageData(new ImageData(rgba, imgData.width, imgData.height), 0, 0);
+            const blob: Blob = await new Promise((res) =>
+              c.toBlob((b) => res(b!), "image/png")
+            );
+            imgIdx++;
+            results.push({
+              name: `img_p${i}_${imgIdx}.png`,
+              bytes: new Uint8Array(await blob.arrayBuffer()),
+              mime: "image/png",
+            });
+          }
+        }
+      }
+    } catch {
+      /* fall through to page render */
+    }
+    page.cleanup();
+  }
+  doc.destroy();
+
+  // Always include page renders so the ZIP is never empty for image-less text PDFs
+  if (results.length === 0) {
+    const pages = await renderPdfPages(source, { format: "png", scale: 1.5 });
+    return pages.map((p, i) => ({
+      name: `page_${i + 1}.png`,
+      bytes: p.bytes,
+      mime: "image/png",
+    }));
+  }
+  return results;
 }
 
 export type TextHit = {

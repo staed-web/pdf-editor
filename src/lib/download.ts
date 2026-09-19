@@ -1,17 +1,23 @@
 import JSZip from "jszip";
 
+function toArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
+  if (data instanceof ArrayBuffer) return data.slice(0);
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  return copy.buffer;
+}
+
 export function downloadBytes(
   data: Uint8Array | ArrayBuffer | Blob,
   filename: string,
   mime = "application/pdf"
 ) {
+  // Copy into a fresh ArrayBuffer to avoid detached / SharedArrayBuffer
+  // Blob constructor issues in some browsers / TS DOM libs.
   const blob =
     data instanceof Blob
       ? data
-      : new Blob(
-          [data instanceof ArrayBuffer ? data : new Uint8Array(data)],
-          { type: mime }
-        );
+      : new Blob([toArrayBuffer(data)], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

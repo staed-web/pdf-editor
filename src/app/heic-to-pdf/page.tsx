@@ -7,7 +7,7 @@ import { DropZone } from "@/components/tools/DropZone";
 import { ResultBar } from "@/components/tools/ResultBar";
 import { Button } from "@/components/ui/button";
 import { getTool } from "@/lib/tools";
-import { heicToPdf, imagesToPdf } from "@/lib/pdf/extra-ops";
+import { heicToPdf } from "@/lib/pdf/extra-ops";
 import { downloadBytes } from "@/lib/download";
 import { PDFDocument } from "pdf-lib";
 

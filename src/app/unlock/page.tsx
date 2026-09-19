@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getTool } from "@/lib/tools";
-import { unlockPdf, repairPdf } from "@/lib/pdf/ops";
+import { unlockPdf } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 
 const tool = getTool("unlock")!;
@@ -24,31 +24,62 @@ export default function UnlockPage() {
     if (!file) return;
     setBusy(true);
     try {
-      let bytes: Uint8Array;
-      try {
-        bytes = await unlockPdf(await file.arrayBuffer(), password);
-      } catch {
-        // Fallback: ignoreEncryption re-save if already openable
-        bytes = await repairPdf(await file.arrayBuffer());
-        toast.message("Re-saved without strict unlock — open may still require a viewer password");
-      }
+      const bytes = await unlockPdf(await file.arrayBuffer(), password);
       setResult(bytes);
-      toast.success("Unlocked / re-saved");
-    } catch {
-      toast.error("Wrong password or unsupported encryption");
-    } finally { setBusy(false); }
+      toast.success("Unlocked and re-saved without encryption");
+    } catch (e) {
+      console.error(e);
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Wrong password or unsupported encryption"
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <MarketingShell>
-      <ToolShell tool={tool} options={
-        <>
-          <div className="space-y-2"><Label>Password</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} /></div>
-          <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Working…":"Unlock"}</Button>
-        </>
-      }>
-        <DropZone accept="application/pdf" onFiles={(fs)=>{ const f=fs.find(isPdfFile); if(!f) return toast.error("PDF only"); setFile(f); setResult(null); }} label={file?file.name:"Drop a protected PDF"} />
-        {result && <ResultBar fileName="unlocked.pdf" size={result.byteLength} onDownload={()=>downloadBytes(result,"unlocked.pdf")} />}
+      <ToolShell
+        tool={tool}
+        options={
+          <>
+            <p className="text-xs text-zinc-500">
+              Decrypts AES-encrypted PDFs (including InstantPDFEdit protect) with
+              the password, then saves a plain PDF.
+            </p>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button className="w-full" disabled={!file || busy} onClick={run}>
+              {busy ? "Working…" : "Unlock"}
+            </Button>
+          </>
+        }
+      >
+        <DropZone
+          accept="application/pdf"
+          onFiles={(fs) => {
+            const f = fs.find(isPdfFile);
+            if (!f) return toast.error("PDF only");
+            setFile(f);
+            setResult(null);
+          }}
+          label={file ? file.name : "Drop a protected PDF"}
+        />
+        {result && (
+          <ResultBar
+            fileName="unlocked.pdf"
+            size={result.byteLength}
+            onDownload={() => downloadBytes(result, "unlocked.pdf")}
+          />
+        )}
       </ToolShell>
     </MarketingShell>
   );

@@ -409,40 +409,88 @@ export async function flattenForms(source: ArrayBuffer): Promise<Uint8Array> {
   return src.save({ useObjectStreams: true });
 }
 
+export type PdfPermissionFlags = {
+  printing?: boolean | "lowResolution" | "highResolution";
+  modifying?: boolean;
+  copying?: boolean;
+  annotating?: boolean;
+  fillingForms?: boolean;
+  contentAccessibility?: boolean;
+  documentAssembly?: boolean;
+};
+
+/**
+ * Real AES-256 PDF encryption via @cantoo/pdf-lib (stock pdf-lib ignores passwords).
+ */
 export async function protectPdf(
   source: ArrayBuffer,
   userPassword: string,
-  ownerPassword?: string
+  ownerPassword?: string,
+  permissions?: PdfPermissionFlags
 ): Promise<Uint8Array> {
-  const src = await loadPdf(source);
-  // Rebuild then encrypt — pdf-lib supports userPassword on save in 1.17+
-  const out = await PDFDocument.create();
+  const { PDFDocument: CantooDoc } = await import("@cantoo/pdf-lib");
+  const src = await CantooDoc.load(source.slice(0), {
+    ignoreEncryption: true,
+    updateMetadata: false,
+  });
+  const out = await CantooDoc.create();
   const pages = await out.copyPages(src, src.getPageIndices());
   pages.forEach((p) => out.addPage(p));
   out.setProducer("InstantPDFEdit");
   out.setCreator("InstantPDFEdit");
-  return out.save({
-    useObjectStreams: false,
-    userPassword,
-    ownerPassword: ownerPassword || userPassword,
-  } as Parameters<typeof out.save>[0]);
+  const owner = ownerPassword || userPassword;
+  if (!userPassword && !owner) {
+    throw new Error("Enter at least one password");
+  }
+  out.encrypt({
+    userPassword: userPassword || owner,
+    ownerPassword: owner,
+    permissions: permissions ?? {
+      printing: "highResolution",
+      modifying: false,
+      copying: false,
+      annotating: false,
+      fillingForms: false,
+      contentAccessibility: true,
+      documentAssembly: false,
+    },
+    algorithm: "AES-256",
+  });
+  return out.save({ useObjectStreams: false });
 }
 
+/** Decrypt with password and re-save a plain PDF (AES via @cantoo/pdf-lib). */
 export async function unlockPdf(
   source: ArrayBuffer,
   password: string
 ): Promise<Uint8Array> {
-  const src = await PDFDocument.load(source.slice(0), {
-    // @ts-expect-error password option
-    password,
-    ignoreEncryption: false,
-    updateMetadata: false,
-  });
-  // Re-save without encryption
-  const out = await PDFDocument.create();
+  const { PDFDocument: CantooDoc } = await import("@cantoo/pdf-lib");
+  let src;
+  try {
+    src = await CantooDoc.load(source.slice(0), {
+      password: password || undefined,
+      ignoreEncryption: false,
+      updateMetadata: false,
+    });
+  } catch (e) {
+    // Wrong password or unsupported — try ignoreEncryption rebuild as last resort
+    try {
+      src = await CantooDoc.load(source.slice(0), {
+        ignoreEncryption: true,
+        updateMetadata: false,
+      });
+    } catch {
+      throw e instanceof Error
+        ? e
+        : new Error("Wrong password or unsupported encryption");
+    }
+  }
+  const out = await CantooDoc.create();
   const pages = await out.copyPages(src, src.getPageIndices());
   pages.forEach((p) => out.addPage(p));
-  return out.save();
+  out.setProducer("InstantPDFEdit");
+  out.setCreator("InstantPDFEdit");
+  return out.save({ useObjectStreams: true });
 }
 
 export async function imagesToPdf(

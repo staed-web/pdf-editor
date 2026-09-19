@@ -32,7 +32,7 @@ export default function ProtectPage() {
       toast.success("PDF encrypted");
     } catch (e) {
       console.error(e);
-      toast.error("Encryption failed — try a different PDF or shorter password");
+      toast.error(e instanceof Error ? e.message : "Encryption failed");
     } finally { setBusy(false); }
   };
 
@@ -42,7 +42,7 @@ export default function ProtectPage() {
         <>
           <div className="space-y-2"><Label>Password</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} /></div>
           <div className="space-y-2"><Label>Confirm</Label><Input type="password" value={confirm} onChange={(e)=>setConfirm(e.target.value)} /></div>
-          <p className="text-[11px] text-zinc-500">Uses pdf-lib encryption. Keep your password safe — we cannot recover it.</p>
+          <p className="text-[11px] text-zinc-500">AES-256 encryption via @cantoo/pdf-lib (real /Encrypt). Keep your password safe — InstantPDFEdit cannot recover it.</p>
           <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Encrypting…":"Protect PDF"}</Button>
         </>
       }>
