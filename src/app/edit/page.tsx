@@ -10,7 +10,7 @@ const EditorShell = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-zinc-50 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-background text-sm text-[var(--muted)]">
         <div className="h-10 w-10 animate-pulse rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600" />
         Loading InstantPDFEdit…
       </div>
@@ -24,7 +24,7 @@ export default function EditPage() {
       <div className="relative">
         <Link
           href="/"
-          className="absolute left-3 top-3 z-[60] hidden rounded-lg bg-zinc-900/80 px-2 py-1 text-[11px] font-medium text-zinc-200 backdrop-blur hover:bg-zinc-800 sm:inline-flex"
+          className="absolute left-3 top-3 z-[60] hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-2 py-1 text-[11px] font-medium text-foreground backdrop-blur hover:bg-[var(--background)] sm:inline-flex"
         >
           ← InstantPDFEdit
         </Link>

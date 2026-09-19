@@ -17,8 +17,8 @@ export function ThumbnailSidebar() {
   if (!show || !pages.length) return null;
 
   return (
-    <aside className="flex w-40 shrink-0 flex-col border-r border-zinc-800/80 bg-zinc-950/60">
-      <div className="border-b border-zinc-800/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+    <aside className="flex w-40 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)]">
+      <div className="border-b border-[var(--border)] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
         Pages
       </div>
       <ScrollArea className="flex-1">
@@ -108,7 +108,7 @@ function Thumbnail({
       type="button"
       onClick={onSelect}
       className={cn(
-        "group relative w-full overflow-hidden rounded-lg border bg-zinc-900 p-1 transition",
+        "group relative w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 transition",
         active
           ? "border-amber-500 ring-2 ring-amber-500/30"
           : "border-zinc-800 hover:border-zinc-600"

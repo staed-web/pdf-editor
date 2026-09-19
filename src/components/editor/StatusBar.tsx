@@ -14,12 +14,12 @@ export function StatusBar() {
   const isLoading = useEditorStore((s) => s.isLoading);
 
   return (
-    <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-zinc-800/80 bg-zinc-950/95 px-3 text-[11px] text-zinc-500">
+    <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-[var(--border)] bg-[var(--card)]/95 px-3 text-[11px] text-[var(--muted)]">
       {isLoading ? (
         <span className="animate-pulse text-amber-400/80">Loading…</span>
       ) : fileName ? (
         <>
-          <span className="truncate text-zinc-400">{fileName}</span>
+          <span className="truncate text-foreground/70">{fileName}</span>
           <span>·</span>
           <span>{formatBytes(fileSize)}</span>
           <span>·</span>

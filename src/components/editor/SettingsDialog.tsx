@@ -10,12 +10,18 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useEditorStore } from "@/store/editorStore";
+import { useThemeStore, type ThemeMode } from "@/lib/theme/theme-store";
+import { cn } from "@/lib/utils";
+
+const THEME_OPTIONS: ThemeMode[] = ["system", "light", "dark"];
 
 export function SettingsDialog() {
   const open = useEditorStore((s) => s.settingsOpen);
   const setDialog = useEditorStore((s) => s.setDialog);
   const settings = useEditorStore((s) => s.settings);
   const updateSettings = useEditorStore((s) => s.updateSettings);
+  const mode = useThemeStore((s) => s.mode);
+  const setMode = useThemeStore((s) => s.setMode);
 
   return (
     <Dialog open={open} onOpenChange={(o) => setDialog("settingsOpen", o)}>
@@ -28,15 +34,17 @@ export function SettingsDialog() {
           <div>
             <Label>Theme</Label>
             <div className="mt-2 flex gap-2">
-              {(["system", "light", "dark"] as const).map((t) => (
+              {THEME_OPTIONS.map((t) => (
                 <button
                   key={t}
-                  onClick={() => updateSettings({ theme: t })}
-                  className={`rounded-lg border px-3 py-1.5 text-xs capitalize ${
-                    settings.theme === t
-                      ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
-                      : "border-zinc-700 text-zinc-400"
-                  }`}
+                  type="button"
+                  onClick={() => setMode(t)}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors",
+                    mode === t
+                      ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      : "border-[var(--border)] text-[var(--muted)] hover:border-amber-500/40 hover:text-foreground"
+                  )}
                 >
                   {t}
                 </button>
@@ -60,7 +68,7 @@ export function SettingsDialog() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Flatten forms on export</Label>
-              <p className="text-[10px] text-zinc-500">Burn field values into page content</p>
+              <p className="text-[10px] text-[var(--muted)]">Burn field values into page content</p>
             </div>
             <Switch
               checked={settings.flattenFormsOnExport}

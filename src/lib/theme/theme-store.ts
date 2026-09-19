@@ -4,7 +4,7 @@ import { create } from "zustand";
 
 export type ThemeMode = "light" | "dark" | "system";
 
-const STORAGE_KEY = "instantpdfedit-theme";
+export const STORAGE_KEY = "instantpdfedit-theme";
 
 function resolveDark(mode: ThemeMode): boolean {
   if (typeof window === "undefined") return false;
@@ -14,7 +14,8 @@ function resolveDark(mode: ThemeMode): boolean {
   return mode === "dark";
 }
 
-function applyDom(mode: ThemeMode) {
+/** Apply resolved dark/light to <html> — call on hydrate, setMode, and system media changes. */
+export function applyDom(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const dark = resolveDark(mode);
   const root = document.documentElement;
@@ -29,6 +30,7 @@ interface ThemeState {
   setMode: (mode: ThemeMode) => void;
   hydrate: () => void;
   cycle: () => void;
+  reapply: () => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -51,9 +53,14 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   setMode: (mode) => {
     try {
       localStorage.setItem(STORAGE_KEY, mode);
-    } catch { /* */ }
+    } catch {
+      /* ignore quota / private mode */
+    }
     applyDom(mode);
     set({ mode });
+  },
+  reapply: () => {
+    applyDom(get().mode);
   },
   cycle: () => {
     const order: ThemeMode[] = ["light", "dark", "system"];

@@ -61,10 +61,10 @@ export function EmptyState() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-2xl shadow-amber-500/25">
             <span className="text-xl font-black text-zinc-950">I</span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-50">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             InstantPDFEdit
           </h1>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Every PDF tool. Instantly. Annotate, rearrange, sign — entirely in your browser.
           </p>
         </div>
@@ -84,14 +84,14 @@ export function EmptyState() {
             "relative rounded-2xl border-2 border-dashed p-10 text-center transition-all",
             dragOver
               ? "border-amber-400 bg-amber-500/10 scale-[1.01]"
-              : "border-zinc-700/80 bg-zinc-900/40 hover:border-zinc-500"
+              : "border-[var(--border)] bg-[var(--card)] hover:border-amber-400/50"
           )}
         >
           <FileUp className="mx-auto mb-3 h-10 w-10 text-amber-400/80" />
-          <p className="text-sm font-medium text-zinc-200">
+          <p className="text-sm font-medium text-foreground">
             Drop a PDF here, or choose a file
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-[var(--muted)]">
             Files never leave this device
           </p>
           <label className="mt-5 inline-block">
@@ -133,7 +133,7 @@ export function EmptyState() {
           ].map((f) => (
             <div
               key={f.title}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3 text-center"
+              className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-center"
             >
               <f.icon className="mx-auto mb-1.5 h-4 w-4 text-amber-400/80" />
               <p className="text-xs font-semibold text-zinc-200">{f.title}</p>
@@ -147,7 +147,7 @@ export function EmptyState() {
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
               <Clock className="h-3.5 w-3.5" /> Recent
             </div>
-            <ul className="divide-y divide-zinc-800/80 overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40">
+            <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
               {recent.slice(0, 6).map((r) => (
                 <li key={r.id} className="flex items-center gap-2 px-3 py-2.5">
                   <button

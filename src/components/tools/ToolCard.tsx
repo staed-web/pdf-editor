@@ -16,7 +16,7 @@ export function ToolCard({
     <Link
       href={tool.href}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-amber-500/40",
+        "group relative flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md dark:hover:border-amber-500/40",
         className
       )}
     >
@@ -31,10 +31,10 @@ export function ToolCard({
         )}
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-zinc-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-400">
+        <h3 className="text-sm font-semibold text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-400">
           {tool.name}
         </h3>
-        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">
           {tool.description}
         </p>
       </div>

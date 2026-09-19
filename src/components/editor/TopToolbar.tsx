@@ -23,6 +23,7 @@ import {
   X,
   Moon,
   Sun,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { useEditorStore } from "@/store/editorStore";
 import { exportEditedPdf, mergePdfs, extractPages } from "@/lib/pdf/export";
 import { searchPdf } from "@/lib/pdf/search";
 import { downloadBlob, cn } from "@/lib/utils";
+import { useThemeStore } from "@/lib/theme/theme-store";
 
 export function TopToolbar() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,7 +80,6 @@ export function TopToolbar() {
   const nextMatch = useEditorStore((s) => s.nextMatch);
   const prevMatch = useEditorStore((s) => s.prevMatch);
   const setDialog = useEditorStore((s) => s.setDialog);
-  const updateSettings = useEditorStore((s) => s.updateSettings);
   const replacePdfBytes = useEditorStore((s) => s.replacePdfBytes);
   const deleteSelected = useEditorStore((s) => s.deleteSelected);
   const selectedIds = useEditorStore((s) => s.selectedIds);
@@ -168,16 +169,12 @@ export function TopToolbar() {
     }
   };
 
-  const theme = settings.theme;
-  const cycleTheme = () => {
-    const next =
-      theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
-    updateSettings({ theme: next });
-  };
+  const themeMode = useThemeStore((s) => s.mode);
+  const cycleTheme = useThemeStore((s) => s.cycle);
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-zinc-200 bg-white/95 px-2 backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-950/95">
+      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)]/95 px-2 backdrop-blur">
         <div className="flex items-center gap-1.5 pr-2">
           <a href="/" className="flex items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/20">
@@ -313,11 +310,11 @@ export function TopToolbar() {
 
         <div className="ml-auto flex items-center gap-1">
           {searchOpen ? (
-            <div className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-1.5 py-0.5">
+            <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5">
               <Search className="h-3.5 w-3.5 text-zinc-500" />
               <input
                 autoFocus
-                className="h-7 w-36 bg-transparent text-xs text-zinc-100 outline-none"
+                className="h-7 w-36 bg-transparent text-xs text-foreground outline-none"
                 placeholder="Search text…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -357,8 +354,8 @@ export function TopToolbar() {
           <ToolBtn tip="Shortcuts" onClick={() => setDialog("shortcutsOpen", true)}>
             <Keyboard />
           </ToolBtn>
-          <ToolBtn tip={`Theme: ${theme}`} onClick={cycleTheme}>
-            {theme === "light" ? <Sun /> : <Moon />}
+          <ToolBtn tip={`Theme: ${themeMode}`} onClick={cycleTheme}>
+            {themeMode === "light" ? <Sun /> : themeMode === "dark" ? <Moon /> : <Monitor />}
           </ToolBtn>
           <ToolBtn tip="Settings" onClick={() => setDialog("settingsOpen", true)}>
             <Settings />
@@ -383,7 +380,7 @@ function ToolBtn({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-zinc-400", className)} {...props}>
+        <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-[var(--muted)] hover:text-foreground", className)} {...props}>
           {children}
         </Button>
       </TooltipTrigger>

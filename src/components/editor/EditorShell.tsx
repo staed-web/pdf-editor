@@ -26,7 +26,7 @@ export function EditorShell() {
   }, [initSettings]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <ThemeSync />
       <TopToolbar />
       <div className="flex min-h-0 flex-1">

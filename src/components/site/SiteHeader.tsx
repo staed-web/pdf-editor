@@ -19,7 +19,7 @@ export function SiteHeader() {
   const [mega, setMega] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/80">
+    <header className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--background)]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <Logo size="sm" />
         <nav className="ml-2 hidden items-center gap-1 md:flex">
@@ -30,20 +30,20 @@ export function SiteHeader() {
           >
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
               aria-expanded={mega}
             >
               Tools <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </button>
             {mega && (
               <div className="absolute left-0 top-full z-50 w-[min(90vw,720px)] pt-2">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xl">
                   <div className="grid gap-4 sm:grid-cols-3">
                     {CATEGORY_ORDER.slice(0, 6).map((cat) => (
                       <MegaCol key={cat} cat={cat} />
                     ))}
                   </div>
-                  <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  <div className="mt-3 border-t border-[var(--border)] pt-3">
                     <Link
                       href="/tools"
                       className="text-xs font-medium text-amber-700 hover:underline dark:text-amber-400"
@@ -57,13 +57,13 @@ export function SiteHeader() {
           </div>
           <Link
             href="/pricing"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
             Pricing
           </Link>
           <Link
             href="/tools"
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
             All tools
           </Link>
@@ -78,7 +78,7 @@ export function SiteHeader() {
           </Button>
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100 md:hidden dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground/80 hover:bg-black/[0.04] md:hidden dark:hover:bg-white/[0.06]"
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
           >
@@ -87,7 +87,7 @@ export function SiteHeader() {
         </div>
       </div>
       {open && (
-        <div className="border-t border-zinc-200 bg-white px-4 py-4 md:hidden dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-4 md:hidden">
           <div className="flex flex-col gap-1">
             <Link href="/tools" className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
               All tools
@@ -112,7 +112,7 @@ function MegaCol({ cat }: { cat: ToolCategory }) {
   const items = TOOLS.filter((t) => t.category === cat).slice(0, 5);
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
         {CATEGORY_LABELS[cat]}
       </p>
       <ul className="space-y-1">
@@ -121,7 +121,7 @@ function MegaCol({ cat }: { cat: ToolCategory }) {
             <Link
               href={t.href}
               className={cn(
-                "block rounded-lg px-2 py-1.5 text-sm text-zinc-700 hover:bg-amber-50 hover:text-amber-800 dark:text-zinc-300 dark:hover:bg-amber-500/10 dark:hover:text-amber-300"
+                "block rounded-lg px-2 py-1.5 text-sm text-foreground/80 hover:bg-amber-50 hover:text-amber-800 dark:hover:bg-amber-500/10 dark:hover:text-amber-300"
               )}
             >
               {t.name}

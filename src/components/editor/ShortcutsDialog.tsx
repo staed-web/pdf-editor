@@ -46,7 +46,7 @@ export function ShortcutsDialog() {
           {SHORTCUTS.map(([key, label]) => (
             <li key={key} className="flex items-center justify-between gap-4 text-sm">
               <span className="text-zinc-400">{label}</span>
-              <kbd className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-0.5 font-mono text-[11px] text-zinc-200">
+              <kbd className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 font-mono text-[11px] text-foreground">
                 {key}
               </kbd>
             </li>

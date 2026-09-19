@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useThemeStore } from "@/lib/theme/theme-store";
+import { applyDom, useThemeStore } from "@/lib/theme/theme-store";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const hydrate = useThemeStore((s) => s.hydrate);
@@ -11,15 +11,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     hydrate();
   }, [hydrate]);
 
+  // When in system mode: apply immediately and re-apply on OS preference change.
   useEffect(() => {
     if (mode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const fn = () => {
-      const root = document.documentElement;
-      root.classList.toggle("dark", mq.matches);
-      root.dataset.theme = mq.matches ? "dark" : "light";
-      root.style.colorScheme = mq.matches ? "dark" : "light";
-    };
+    const fn = () => applyDom("system");
+    fn(); // initial apply when switching TO system
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, [mode]);

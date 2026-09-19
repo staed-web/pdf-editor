@@ -73,7 +73,7 @@ export function ToolsRail() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-zinc-800/80 bg-zinc-950/90 py-3 backdrop-blur">
+      <aside className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--card)]/90 py-3 backdrop-blur">
         {GROUPS.map((g, gi) => (
           <div key={gi} className="flex w-full flex-col items-center gap-1 px-2">
             {gi > 0 && <Separator className="my-1.5 w-8" />}

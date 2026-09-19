@@ -53,13 +53,13 @@ export default function HomePage() {
               <Sparkles className="h-3.5 w-3.5" />
               Every PDF tool. Instantly.
             </div>
-            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl dark:text-zinc-50">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               The private PDF suite
               <span className="block bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
                 that never uploads your files
               </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-zinc-600 sm:text-lg dark:text-zinc-400">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
               Merge, split, compress, convert, annotate, sign, and protect —
               all in one polished workspace. InstantPDFEdit runs locally in your
               browser.
@@ -78,7 +78,7 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-[var(--muted)]">
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-emerald-600" /> Privacy-first
               </span>
@@ -94,7 +94,7 @@ export default function HomePage() {
       </section>
 
       {/* Trust */}
-      <section className="border-y border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40">
+      <section className="border-y border-[var(--border)] bg-[var(--card)]">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6">
           {[
             {
@@ -111,10 +111,10 @@ export default function HomePage() {
             },
           ].map((c) => (
             <div key={c.title} className="rounded-2xl p-1">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <h3 className="text-sm font-semibold text-foreground">
                 {c.title}
               </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
                 {c.body}
               </p>
             </div>
@@ -126,10 +126,10 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
               Featured tools
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-[var(--muted)]">
               Start with the essentials — or jump into the full editor.
             </p>
           </div>
@@ -148,9 +148,9 @@ export default function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="bg-zinc-50 py-16 dark:bg-zinc-950/50">
+      <section className="bg-[var(--panel)] py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="mb-8 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h2 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">
             All tools by category
           </h2>
           <div className="space-y-10">
@@ -159,7 +159,7 @@ export default function HomePage() {
               if (!list.length) return null;
               return (
                 <div key={cat}>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                     {CATEGORY_LABELS[cat]}
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -176,7 +176,7 @@ export default function HomePage() {
 
       {/* How it works */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 className="mb-8 text-center text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h2 className="mb-8 text-center text-2xl font-semibold tracking-tight text-foreground">
           How it works
         </h2>
         <ol className="grid gap-6 sm:grid-cols-3">
@@ -187,36 +187,36 @@ export default function HomePage() {
           ].map((s) => (
             <li
               key={s.n}
-              className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-zinc-950">
                 {s.n}
               </span>
-              <h3 className="mt-4 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <h3 className="mt-4 text-sm font-semibold text-foreground">
                 {s.t}
               </h3>
-              <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">{s.d}</p>
+              <p className="mt-1.5 text-sm text-[var(--muted)]">{s.d}</p>
             </li>
           ))}
         </ol>
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-zinc-900/30">
+      <section className="border-t border-[var(--border)] bg-[var(--card)] py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <h2 className="mb-8 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h2 className="mb-8 text-center text-2xl font-semibold text-foreground">
             FAQ
           </h2>
           <div className="space-y-4">
             {FAQS.map((f) => (
               <details
                 key={f.q}
-                className="group rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950"
+                className="group rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-5 py-4"
               >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
                   {f.q}
                 </summary>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                   {f.a}
                 </p>
               </details>

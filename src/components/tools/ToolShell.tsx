@@ -21,7 +21,7 @@ export function ToolShell({
   return (
     <div className={cn("mx-auto w-full max-w-5xl px-4 py-10 sm:px-6", className)}>
       <div className="mb-8">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1 text-[11px] font-medium text-foreground/70 shadow-sm">
           <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           Private · in-browser · no upload
         </div>
@@ -30,10 +30,10 @@ export function ToolShell({
             <Icon className="h-6 w-6" />
           </span>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               {tool.name}
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
               {tool.description}
             </p>
           </div>
@@ -43,8 +43,8 @@ export function ToolShell({
       <div className={cn("grid gap-6", options && "lg:grid-cols-[1fr_280px]")}>
         <div className="min-w-0 space-y-4">{children}</div>
         {options && (
-          <aside className="h-fit space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <aside className="h-fit space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-foreground">
               Options
             </h2>
             {options}
