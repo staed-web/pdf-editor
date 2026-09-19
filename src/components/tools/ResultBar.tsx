@@ -1,22 +1,35 @@
 "use client";
 
-import { Download, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { Download, CheckCircle2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes, cn } from "@/lib/utils";
+import { shareOrDownload } from "@/lib/share";
+import { haptic } from "@/hooks/useHaptic";
+import { toast } from "sonner";
 
 export function ResultBar({
   fileName,
   size,
   onDownload,
+  blob,
+  mime = "application/pdf",
   meta,
   className,
 }: {
   fileName: string;
   size?: number;
   onDownload: () => void;
+  /** When provided, enables Web Share API for the file */
+  blob?: Blob | Uint8Array | ArrayBuffer | null;
+  mime?: string;
   meta?: string;
   className?: string;
 }) {
+  const [sharing, setSharing] = useState(false);
+  const canShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
   return (
     <div
       className={cn(
@@ -37,10 +50,41 @@ export function ResultBar({
           </p>
         </div>
       </div>
-      <Button onClick={onDownload} className="shrink-0">
-        <Download className="h-4 w-4" />
-        Download
-      </Button>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {blob && canShare && (
+          <Button
+            variant="outline"
+            disabled={sharing}
+            onClick={async () => {
+              setSharing(true);
+              haptic("success");
+              try {
+                const result = await shareOrDownload(blob, fileName, mime);
+                if (result === "shared") toast.success("Shared");
+              } catch (e) {
+                if (!(e instanceof Error && e.name === "AbortError")) {
+                  toast.error("Share failed");
+                }
+              } finally {
+                setSharing(false);
+              }
+            }}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
+        )}
+        <Button
+          onClick={() => {
+            haptic("medium");
+            onDownload();
+          }}
+          className="min-h-11 flex-1 sm:flex-none"
+        >
+          <Download className="h-4 w-4" />
+          Download
+        </Button>
+      </div>
     </div>
   );
 }

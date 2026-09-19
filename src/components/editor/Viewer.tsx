@@ -121,7 +121,7 @@ export function Viewer() {
     <div
       ref={scrollRef}
       className={cn(
-        "relative h-full flex-1 overflow-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800/80 via-zinc-925 to-zinc-950",
+        "relative h-full flex-1 overflow-auto overscroll-contain editor-canvas-scroll bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800/80 via-zinc-925 to-zinc-950",
         tool === "pan" && "cursor-grab active:cursor-grabbing"
       )}
       style={{

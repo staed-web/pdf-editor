@@ -6,6 +6,7 @@ import { Menu, X, ChevronDown, Pencil } from "lucide-react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { InstallButton } from "@/components/pwa/InstallButton";
 import {
   TOOLS,
   CATEGORY_ORDER,
@@ -69,6 +70,7 @@ export function SiteHeader() {
           </Link>
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <InstallButton className="hidden lg:inline-flex" />
           <ThemeToggle className="hidden sm:inline-flex" />
           <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href="/edit">

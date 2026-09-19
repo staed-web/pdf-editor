@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_NAME = "InstantPDFEdit";
+
 export const metadata: Metadata = {
   title: {
     default: "InstantPDFEdit — Every PDF tool. Instantly.",
@@ -19,7 +21,20 @@ export const metadata: Metadata = {
   },
   description:
     "Merge, split, compress, convert, edit, sign, and protect PDFs entirely in your browser. Private workspace — files never uploaded.",
-  applicationName: "InstantPDFEdit",
+  applicationName: APP_NAME,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: APP_NAME,
+  },
+  formatDetection: { telephone: false },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   keywords: [
     "PDF editor",
     "merge PDF",
@@ -29,18 +44,21 @@ export const metadata: Metadata = {
     "sign PDF",
     "privacy",
     "InstantPDFEdit",
+    "PWA",
   ],
   openGraph: {
     title: "InstantPDFEdit — Every PDF tool. Instantly.",
-    description:
-      "All-in-one private PDF suite. Files stay in your browser.",
+    description: "All-in-one private PDF suite. Files stay in your browser.",
     type: "website",
-    siteName: "InstantPDFEdit",
+    siteName: APP_NAME,
   },
   twitter: {
     card: "summary_large_image",
     title: "InstantPDFEdit",
     description: "Every PDF tool. Instantly. Private & in-browser.",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -51,6 +69,9 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({
@@ -61,6 +82,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('instantpdfedit-theme')||'light';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light';}catch(e){}})();`,

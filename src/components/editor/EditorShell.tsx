@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { useEditorStore } from "@/store/editorStore";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -15,10 +15,13 @@ import { SignatureDialog } from "./SignatureDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { ThemeSync } from "./ThemeSync";
+import { MobileToolsBar } from "./MobileToolsBar";
+import { MobilePagesDrawer } from "./MobilePagesDrawer";
 
 export function EditorShell() {
   const pdfBytes = useEditorStore((s) => s.pdfBytes);
   const initSettings = useEditorStore((s) => s.initSettings);
+  const [pagesOpen, setPagesOpen] = useState(false);
   useKeyboardShortcuts();
 
   useEffect(() => {
@@ -26,26 +29,42 @@ export function EditorShell() {
   }, [initSettings]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <div className="editor-shell flex h-dvh flex-col overflow-hidden overscroll-none bg-background text-foreground">
       <ThemeSync />
-      <TopToolbar />
-      <div className="flex min-h-0 flex-1">
+      <div className="safe-pt shrink-0">
+        <TopToolbar />
+      </div>
+      <div className="flex min-h-0 flex-1 touch-pan-y">
         {pdfBytes ? (
           <>
-            <ToolsRail />
-            <ThumbnailSidebar />
+            <div className="hidden md:contents">
+              <ToolsRail />
+              <ThumbnailSidebar />
+            </div>
             <Viewer />
-            <PropertiesPanel />
+            <div className="hidden lg:contents">
+              <PropertiesPanel />
+            </div>
           </>
         ) : (
           <EmptyState />
         )}
       </div>
-      <StatusBar />
+      {pdfBytes ? <MobileToolsBar onOpenPages={() => setPagesOpen(true)} /> : null}
+      <div className="hidden md:block">
+        <StatusBar />
+      </div>
+      <MobilePagesDrawer open={pagesOpen} onClose={() => setPagesOpen(false)} />
       <SignatureDialog />
       <SettingsDialog />
       <ShortcutsDialog />
-      <Toaster position="bottom-right" richColors closeButton />
+      <Toaster
+        position="bottom-center"
+        richColors
+        closeButton
+        offset={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+        mobileOffset={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+      />
     </div>
   );
 }

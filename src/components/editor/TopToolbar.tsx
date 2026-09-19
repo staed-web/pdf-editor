@@ -174,7 +174,7 @@ export function TopToolbar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)]/95 px-2 backdrop-blur">
+      <header className="flex h-12 shrink-0 items-center gap-1 overflow-x-auto overscroll-x-contain border-b border-[var(--border)] bg-[var(--card)]/95 px-2 backdrop-blur no-scrollbar safe-px">
         <div className="flex items-center gap-1.5 pr-2">
           <a href="/" className="flex items-center gap-1.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/20">
@@ -279,6 +279,7 @@ export function TopToolbar() {
           <ChevronRight />
         </ToolBtn>
 
+<div className="hidden items-center gap-1 md:flex">
         <Separator orientation="vertical" className="mx-1 h-6" />
 
         <ToolBtn tip="Rotate page" disabled={!pages.length} onClick={() => rotatePage(currentPage, 90)}>
@@ -307,6 +308,7 @@ export function TopToolbar() {
         <ToolBtn tip="Extract page" disabled={!pdfBytes} onClick={() => void onExtract()}>
           <Scissors />
         </ToolBtn>
+        </div>
 
         <div className="ml-auto flex items-center gap-1">
           {searchOpen ? (
