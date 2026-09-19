@@ -20,7 +20,7 @@ export function SiteHeader() {
   const [mega, setMega] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--background)]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[var(--hairline)] bg-[var(--glass)] backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
         <Logo size="sm" />
         <nav className="ml-2 hidden items-center gap-1 md:flex">

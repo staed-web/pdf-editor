@@ -10,8 +10,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { MarketingShell } from "@/components/site/MarketingShell";
+import { MobileHome } from "@/components/mobile/MobileHome";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { useStandalone } from "@/hooks/useStandalone";
 import {
   featuredTools,
   TOOLS,
@@ -31,7 +34,7 @@ const FAQS = [
   },
   {
     q: "What browsers are supported?",
-    a: "Modern Chromium, Firefox, and Safari. The full editor works best on desktop; tool pages are mobile-friendly.",
+    a: "Modern Chromium, Firefox, and Safari. Install as a PWA for a native-feeling workspace with offline app shell.",
   },
   {
     q: "How accurate are conversions like PDF↔Word?",
@@ -40,14 +43,31 @@ const FAQS = [
 ];
 
 export default function HomePage() {
-  const featured = featuredTools();
+  const standalone = useStandalone();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <MarketingShell>
-      {/* Hero */}
+      {!mounted ? (
+        <div className="min-h-[40vh]" aria-hidden />
+      ) : standalone ? (
+        <MobileHome />
+      ) : (
+        <WebHome />
+      )}
+    </MarketingShell>
+  );
+}
+
+function WebHome() {
+  const featured = featuredTools();
+
+  return (
+    <>
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.14),_transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.12),_transparent_55%)]" />
-        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.12),_transparent_55%)]" />
+        <div className="relative mx-auto max-w-6xl px-4 pb-14 pt-12 sm:px-6 sm:pb-24 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
               <Sparkles className="h-3.5 w-3.5" />
@@ -93,8 +113,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -118,8 +137,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="bg-[var(--panel)] py-16">
+      <section className="bg-[var(--panel)] py-14 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">
             All tools by category
@@ -145,20 +163,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
         <h2 className="mb-8 text-center text-2xl font-semibold tracking-tight text-foreground">
           How it works
         </h2>
         <ol className="grid gap-6 sm:grid-cols-3">
           {[
-            { n: "1", t: "Pick a tool", d: "Choose merge, compress, edit, or any converter from the hub." },
-            { n: "2", t: "Drop your files", d: "Drag & drop stays local. Configure options in a clear side panel." },
-            { n: "3", t: "Download instantly", d: "Real client-side processing — then save your result. No waiting on a server." },
+            {
+              n: "1",
+              t: "Pick a tool",
+              d: "Choose merge, compress, edit, or any converter from the hub.",
+            },
+            {
+              n: "2",
+              t: "Drop your files",
+              d: "Drag & drop stays local. Configure options in a clear side panel.",
+            },
+            {
+              n: "3",
+              t: "Download instantly",
+              d: "Real client-side processing — then save your result. No waiting on a server.",
+            },
           ].map((s) => (
             <li
               key={s.n}
-              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm"
+              className="rounded-2xl border border-[var(--hairline)] bg-[var(--card)] p-6 shadow-[var(--shadow)]"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-zinc-950">
                 {s.n}
@@ -172,8 +201,7 @@ export default function HomePage() {
         </ol>
       </section>
 
-      {/* FAQ */}
-      <section className="border-t border-[var(--border)] bg-[var(--card)] py-16">
+      <section className="border-t border-[var(--hairline)] bg-[var(--card)] py-14 sm:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <h2 className="mb-8 text-center text-2xl font-semibold text-foreground">
             FAQ
@@ -182,7 +210,7 @@ export default function HomePage() {
             {FAQS.map((f) => (
               <details
                 key={f.q}
-                className="group rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-5 py-4"
+                className="group rounded-2xl border border-[var(--hairline)] bg-[var(--panel)] px-5 py-4"
               >
                 <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">
                   {f.q}
@@ -196,9 +224,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="px-4 py-16 sm:px-6">
-        <div className="mx-auto flex max-w-4xl flex-col items-center rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-800 px-8 py-12 text-center shadow-xl dark:from-amber-500/20 dark:to-orange-600/10 dark:ring-1 dark:ring-amber-500/20">
+      <section className="px-4 py-14 sm:px-6 sm:py-16">
+        <div className="mx-auto flex max-w-4xl flex-col items-center rounded-3xl bg-zinc-900 px-8 py-12 text-center shadow-[var(--shadow-lg)] dark:bg-[var(--card-elevated)] dark:ring-1 dark:ring-amber-500/20">
           <h2 className="text-2xl font-semibold text-white">
             Ready to edit a PDF?
           </h2>
@@ -221,6 +248,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-    </MarketingShell>
+    </>
   );
 }

@@ -2,36 +2,56 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Warm paper light palette */
-  --background: #f7f6f3;
-  --foreground: #27272a;
-  --panel: #f7f6f3;
+  /* Warm paper — elevated light */
+  --background: #f4f3ef;
+  --foreground: #18181b;
+  --panel: #eceae4;
   --muted: #71717a;
-  --border: #e8e6e1;
+  --border: #e4e2dc;
+  --hairline: rgb(24 24 27 / 0.08);
   --accent: #d97706;
+  --accent-soft: rgb(245 158 11 / 0.12);
   --card: #ffffff;
+  --card-elevated: #ffffff;
   --ring: #f59e0b;
-  --shadow: 0 1px 2px rgb(39 39 42 / 0.04), 0 8px 24px rgb(39 39 42 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(24 24 27 / 0.04);
+  --shadow: 0 1px 2px rgb(24 24 27 / 0.04), 0 8px 24px rgb(24 24 27 / 0.06);
+  --shadow-lg: 0 4px 12px rgb(24 24 27 / 0.06), 0 20px 48px rgb(24 24 27 / 0.08);
+  --shadow-float: 0 8px 32px rgb(24 24 27 / 0.12), 0 2px 8px rgb(24 24 27 / 0.06);
   --selection: rgb(245 158 11 / 0.22);
   --scrollbar: #d4d0c8;
   --scrollbar-hover: #a8a29e;
+  --glass: rgb(255 255 255 / 0.72);
+  --glass-border: rgb(24 24 27 / 0.06);
+  --radius: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --tab-bar-h: 4rem;
 }
 
 .dark,
 [data-theme="dark"] {
-  /* Deep charcoal with blue/violet tint */
-  --background: #0c0c10;
-  --foreground: #f4f4f5;
-  --panel: #0c0c10;
+  /* Deep charcoal with subtle violet */
+  --background: #0a0a0e;
+  --foreground: #fafafa;
+  --panel: #121218;
   --muted: #a1a1aa;
-  --border: #2a2a35;
+  --border: #27272f;
+  --hairline: rgb(255 255 255 / 0.08);
   --accent: #fbbf24;
-  --card: #18181f;
+  --accent-soft: rgb(251 191 36 / 0.14);
+  --card: #16161d;
+  --card-elevated: #1c1c24;
   --ring: #fbbf24;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.5), 0 24px 56px rgb(0 0 0 / 0.45);
+  --shadow-float: 0 12px 40px rgb(0 0 0 / 0.55), 0 4px 12px rgb(0 0 0 / 0.35);
   --selection: rgb(251 191 36 / 0.28);
   --scrollbar: #3f3f4a;
   --scrollbar-hover: #52525e;
+  --glass: rgb(22 22 29 / 0.78);
+  --glass-border: rgb(255 255 255 / 0.08);
 }
 
 @theme inline {
@@ -44,6 +64,7 @@
   --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-app: var(--radius);
 }
 
 * {
@@ -53,6 +74,11 @@
 html {
   color-scheme: light;
   transition: background-color 0.2s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  /* SF-like mobile type scale */
+  font-size: 16px;
+  letter-spacing: -0.011em;
 }
 
 html.dark {
@@ -67,8 +93,12 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
@@ -112,12 +142,24 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(12%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes press-in {
+  from { transform: scale(1); }
+  to { transform: scale(0.96); }
+}
+
 .animate-in {
-  animation: fade-in 0.15s ease-out;
+  animation: fade-in 0.18s ease-out;
 }
 .fade-in-0 { animation-name: fade-in; }
 .zoom-in-95 { animation-name: zoom-in-95; }
 .animate-float { animation: float 4s ease-in-out infinite; }
+.animate-sheet {
+  animation: sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -134,19 +176,24 @@ body {
 /* Soft depth utility surfaces */
 .surface-card {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--hairline);
   box-shadow: var(--shadow);
+  border-radius: var(--radius);
 }
 
-/* ——— Native / PWA polish ——— */
-html {
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
+.surface-glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-body {
-  overscroll-behavior-y: none;
-  -webkit-text-size-adjust: 100%;
+.surface-inset {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
 }
 
 .app-shell,
@@ -170,6 +217,22 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Large title — native app feel */
+.app-large-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.app-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* Standalone: feel more native */
 @media (display-mode: standalone) {
   body {
@@ -182,14 +245,20 @@ body {
   }
 }
 
-/* Press / active micro-interaction */
+/* Springy press / haptic-ish active */
 @media (hover: none) and (pointer: coarse) {
   button:active,
   a:active,
-  [role="button"]:active {
+  [role="button"]:active,
+  .pressable:active {
     transform: scale(0.97);
-    transition: transform 80ms ease-out;
+    transition: transform 90ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
+}
+
+.pressable {
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 160ms ease, background-color 160ms ease;
 }
 
 /* Hide scrollbars on chip bars */
@@ -201,13 +270,17 @@ body {
   display: none;
 }
 
+/* Floating pill tab bar spacing helper */
+.pb-tab-bar {
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
 /* Canvas / viewer: reduce iOS rubber-band */
 .editor-canvas-scroll {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
 }
-
 
 /* pdf.js text layer — transparent selectable glyphs for markup tools */
 .textLayer {

@@ -34,14 +34,19 @@ export function MobilePagesDrawer({
         onClick={onClose}
       />
       <aside
-        className="relative z-10 flex h-full w-[min(82vw,280px)] flex-col border-r border-[var(--border)] bg-[var(--card)] shadow-2xl"
+        className="animate-sheet relative z-10 flex h-full w-[min(82vw,300px)] flex-col border-r border-[var(--hairline)] bg-[var(--card)] shadow-2xl"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-3">
-          <p className="text-sm font-semibold">Pages</p>
+        <div className="flex items-center justify-between border-b border-[var(--hairline)] px-3.5 py-3">
+          <div>
+            <p className="text-sm font-semibold tracking-tight">Pages</p>
+            <p className="text-[11px] text-[var(--muted)]">
+              {pages.length} {pages.length === 1 ? "page" : "pages"}
+            </p>
+          </div>
           <button
             type="button"
             className="touch-target flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
@@ -52,7 +57,7 @@ export function MobilePagesDrawer({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto overscroll-contain p-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {pages.map((page, i) => (
               <Thumb
                 key={page.id}
@@ -135,12 +140,21 @@ function Thumb({
       type="button"
       onClick={onSelect}
       className={cn(
-        "overflow-hidden rounded-xl border-2 bg-white p-1 shadow-sm transition",
-        active ? "border-amber-500" : "border-transparent"
+        "overflow-hidden rounded-xl border-2 bg-white p-1 shadow-[var(--shadow-sm)] transition",
+        active
+          ? "border-amber-500 ring-2 ring-amber-500/25"
+          : "border-transparent"
       )}
     >
       <canvas ref={canvasRef} className="h-auto w-full" />
-      <span className="mt-1 block text-center text-[10px] text-[var(--muted)]">
+      <span
+        className={cn(
+          "mt-1 block text-center text-[10px] font-medium",
+          active
+            ? "text-amber-700 dark:text-amber-400"
+            : "text-[var(--muted)]"
+        )}
+      >
         {pageIndex + 1}
       </span>
     </button>

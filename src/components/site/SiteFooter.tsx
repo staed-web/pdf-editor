@@ -4,7 +4,7 @@ import { CATEGORY_ORDER, CATEGORY_LABELS, toolsByCategory } from "@/lib/tools";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--border)] bg-[var(--panel)]">
+    <footer className="border-t border-[var(--hairline)] bg-[var(--panel)]">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-1">
           <Logo />
@@ -32,7 +32,7 @@ export function SiteFooter() {
           </div>
         ))}
       </div>
-      <div className="border-t border-[var(--border)] px-4 py-4 text-center text-xs text-[var(--muted)]">
+      <div className="border-t border-[var(--hairline)] px-4 py-4 text-center text-xs text-[var(--muted)]">
         © {new Date().getFullYear()} InstantPDFEdit · Processed locally · No account required
       </div>
     </footer>
