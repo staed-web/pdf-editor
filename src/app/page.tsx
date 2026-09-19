@@ -93,35 +93,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trust */}
-      <section className="border-y border-[var(--border)] bg-[var(--card)]">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6">
-          {[
-            {
-              title: "Processed in-browser",
-              body: "Your PDFs never hit our servers for core tools. What happens in the tab stays in the tab.",
-            },
-            {
-              title: "One workspace",
-              body: "Thirty-plus tools with the same clear UI — drop, configure, download — plus a full editor.",
-            },
-            {
-              title: "Light & dark done right",
-              body: "First-class light theme, refined dark mode, and a system toggle that remembers your preference.",
-            },
-          ].map((c) => (
-            <div key={c.title} className="rounded-2xl p-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                {c.title}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">
-                {c.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Featured */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="mb-8 flex items-end justify-between gap-4">
