@@ -45,7 +45,7 @@ export default function MorePage() {
           <Row
             icon={<Moon className="h-4 w-4" />}
             title="Appearance"
-            subtitle="Light, dark, or system"
+            subtitle="Light or dark"
             trailing={<ThemeToggle />}
             tint="bg-violet-500/12 text-violet-700 dark:text-violet-300"
           />

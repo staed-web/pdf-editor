@@ -2,19 +2,26 @@
 
 import { create } from "zustand";
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";
 
 export const STORAGE_KEY = "instantpdfedit-theme";
 
 function resolveDark(mode: ThemeMode): boolean {
-  if (typeof window === "undefined") return false;
-  if (mode === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  }
   return mode === "dark";
 }
 
-/** Apply resolved dark/light to <html> — call on hydrate, setMode, and system media changes. */
+/** Normalize legacy "system" (or anything else) to light/dark. */
+function normalizeMode(raw: string | null): ThemeMode {
+  if (raw === "dark") return "dark";
+  if (raw === "system" && typeof window !== "undefined") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return "light";
+}
+
+/** Apply resolved dark/light to <html> — call on hydrate and setMode. */
 export function applyDom(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const dark = resolveDark(mode);
@@ -38,11 +45,15 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   hydrated: false,
   hydrate: () => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-      const mode =
-        saved === "light" || saved === "dark" || saved === "system"
-          ? saved
-          : "light";
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const mode = normalizeMode(saved);
+      if (saved === "system") {
+        try {
+          localStorage.setItem(STORAGE_KEY, mode);
+        } catch {
+          /* ignore */
+        }
+      }
       applyDom(mode);
       set({ mode, hydrated: true });
     } catch {
@@ -63,9 +74,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     applyDom(get().mode);
   },
   cycle: () => {
-    const order: ThemeMode[] = ["light", "dark", "system"];
-    const cur = get().mode;
-    const next = order[(order.indexOf(cur) + 1) % order.length];
+    const next = get().mode === "light" ? "dark" : "light";
     get().setMode(next);
   },
 }));

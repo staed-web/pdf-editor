@@ -71,7 +71,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <InstallButton className="hidden lg:inline-flex" />
-          <ThemeToggle className="hidden sm:inline-flex" />
+          <ThemeToggle />
           <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href="/edit">
               <Pencil className="h-3.5 w-3.5" />
@@ -100,9 +100,6 @@ export function SiteHeader() {
             <Link href="/pricing" className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
               Pricing
             </Link>
-            <div className="mt-2 px-1">
-              <ThemeToggle />
-            </div>
           </div>
         </div>
       )}

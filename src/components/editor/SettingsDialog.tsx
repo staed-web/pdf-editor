@@ -13,7 +13,7 @@ import { useEditorStore } from "@/store/editorStore";
 import { useThemeStore, type ThemeMode } from "@/lib/theme/theme-store";
 import { cn } from "@/lib/utils";
 
-const THEME_OPTIONS: ThemeMode[] = ["system", "light", "dark"];
+const THEME_OPTIONS: ThemeMode[] = ["light", "dark"];
 
 export function SettingsDialog() {
   const open = useEditorStore((s) => s.settingsOpen);

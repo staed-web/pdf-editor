@@ -134,7 +134,7 @@ export interface FormFieldValue {
 }
 
 export interface EditorSettings {
-  theme: "system" | "light" | "dark";
+  theme: "light" | "dark";
   defaultColor: string;
   defaultStrokeWidth: number;
   defaultOpacity: number;
@@ -152,7 +152,7 @@ export interface RecentFileMeta {
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
-  theme: "system",
+  theme: "light",
   defaultColor: "#F59E0B",
   defaultStrokeWidth: 2,
   defaultOpacity: 0.4,
