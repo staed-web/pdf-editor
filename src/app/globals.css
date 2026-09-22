@@ -22,6 +22,7 @@
   --scrollbar: #d4d0c8;
   --scrollbar-hover: #a8a29e;
   --glass: rgb(255 255 255 / 0.72);
+  --glass-strong: rgb(244 243 239 / 0.92);
   --glass-border: rgb(24 24 27 / 0.06);
   --radius: 16px;
   --radius-lg: 22px;
@@ -51,6 +52,7 @@
   --scrollbar: #3f3f4a;
   --scrollbar-hover: #52525e;
   --glass: rgb(22 22 29 / 0.78);
+  --glass-strong: rgb(10 10 14 / 0.94);
   --glass-border: rgb(255 255 255 / 0.08);
 }
 
@@ -270,9 +272,36 @@ body {
   display: none;
 }
 
-/* Floating pill tab bar spacing helper */
+/* Full-bleed bottom dock spacing (tab row 3.4rem + home indicator) */
 .pb-tab-bar {
-  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(3.4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Installed PWA shell: content clears fixed edge-to-edge chrome */
+html.standalone .app-shell-main,
+html[data-standalone="1"] .app-shell-main {
+  padding-top: calc(3rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(3.4rem + env(safe-area-inset-bottom, 0px));
+}
+html.standalone .app-shell[data-editor="1"] .app-shell-main,
+html[data-standalone="1"] .app-shell[data-editor="1"] .app-shell-main {
+  /* Editor has its own chrome — only clear the bottom dock */
+  padding-top: 0;
+  padding-bottom: calc(3.4rem + env(safe-area-inset-bottom, 0px));
+}
+
+html.standalone .app-shell,
+html[data-standalone="1"] .app-shell {
+  /* Fill the screen; bars paint into safe areas themselves */
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+html.standalone body,
+html[data-standalone="1"] body {
+  /* Avoid double safe-area padding on body — chrome owns the insets */
+  padding: 0;
+  background: var(--background);
 }
 
 /* Canvas / viewer: reduce iOS rubber-band */

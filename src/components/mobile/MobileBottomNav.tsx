@@ -35,26 +35,34 @@ const TABS = [
   },
 ] as const;
 
-/** Floating frosted pill tab bar — PWA standalone only. */
+/**
+ * Full-bleed bottom dock for installed PWA.
+ * Glass fills the home-indicator region; tab icons sit above the safe inset
+ * (no empty gap under a floating pill).
+ */
 export function MobileBottomNav() {
   const pathname = usePathname() || "/";
 
   return (
     <nav
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50"
-      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+      className="mobile-bottom-dock fixed inset-x-0 bottom-0 z-50"
       aria-label="Primary"
     >
-      <div className="pointer-events-auto mx-auto w-[min(100%-1.25rem,22rem)]">
-        <ul
-          className="flex h-[3.65rem] items-stretch justify-around rounded-[1.35rem] px-1.5 shadow-[var(--shadow-float)]"
-          style={{
-            background: "var(--glass)",
-            border: "1px solid var(--glass-border)",
-            backdropFilter: "saturate(180%) blur(20px)",
-            WebkitBackdropFilter: "saturate(180%) blur(20px)",
-          }}
-        >
+      {/* Edge-to-edge surface including home indicator */}
+      <div
+        className="absolute inset-0 border-t border-[var(--hairline)]"
+        style={{
+          background: "var(--glass-strong)",
+          backdropFilter: "saturate(180%) blur(24px)",
+          WebkitBackdropFilter: "saturate(180%) blur(24px)",
+        }}
+        aria-hidden
+      />
+      <div
+        className="relative"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <ul className="mx-auto flex h-[3.4rem] max-w-lg items-stretch justify-around px-1">
           {TABS.map((tab) => {
             const active = tab.match(pathname);
             const Icon = tab.icon;
@@ -64,7 +72,7 @@ export function MobileBottomNav() {
                   href={tab.href}
                   onClick={() => haptic("light")}
                   className={cn(
-                    "relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-tight transition-colors",
+                    "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-tight transition-colors",
                     active
                       ? "text-amber-700 dark:text-amber-300"
                       : "text-[var(--muted)]"
