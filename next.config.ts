@@ -25,6 +25,8 @@ const withSerwist = withSerwistInit({
     /pdf\.worker/i,
     /\.map$/,
     /ads\.txt$/,
+    /robots\.txt$/,
+    /sitemap\.xml$/,
   ],
 });
 

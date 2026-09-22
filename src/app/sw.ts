@@ -20,6 +20,7 @@ declare const self: ServiceWorkerGlobalScope;
  *   cached at runtime via CacheFirst so builds don’t break worker registration.
  * - Large user PDFs are never cached by the SW (opaque / no request).
  * - /ads.txt uses NetworkOnly so AdSense verification is never stale-cached.
+ * - /robots.txt and /sitemap.xml use NetworkOnly so crawlers always get fresh copies.
  * - Serwist uses webpack injectManifest; `next build` must use webpack
  *   (Next 16 default for production build). Turbopack `next dev` disables SW.
  */
@@ -30,9 +31,12 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    // ads.txt must stay fresh for AdSense crawlers — never serve a stale offline copy
+    // ads.txt / robots.txt / sitemap.xml must stay fresh for crawlers — never stale-cached
     {
-      matcher: ({ url }) => url.pathname === "/ads.txt",
+      matcher: ({ url }) =>
+        url.pathname === "/ads.txt" ||
+        url.pathname === "/robots.txt" ||
+        url.pathname === "/sitemap.xml",
       handler: new NetworkOnly(),
     },
     {
