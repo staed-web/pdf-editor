@@ -204,12 +204,12 @@ export default function RedactPage() {
             <div className="space-y-2 rounded-xl border border-[var(--hairline)] p-3">
               <div className="flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-amber-600" />
-                <Label className="text-sm">Smart patterns</Label>
+                <Label className="text-sm">Rules / heuristic patterns</Label>
               </div>
               <p className="text-[11px] text-[var(--muted)]">
-                Find &amp; preview emails, phones, Aadhaar-like 12-digit groups,
-                PAN-like IDs, and Luhn-valid card numbers — then wipe selected
-                hits.
+                Regex / rules finders (not AI) for emails, phones, Aadhaar-like 12-digit
+                groups, PAN-like IDs, and Luhn-valid card numbers — preview,
+                then wipe selected hits.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {REDACT_PATTERNS.map((p) => {

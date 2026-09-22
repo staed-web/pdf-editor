@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Shield, SlidersHorizontal, X } from "lucide-react";
 import type { ToolDef } from "@/lib/tools";
+import { HonestyBadgeRow } from "@/components/tools/HonestyBadge";
 import { AdBanner } from "@/components/ads/AdBanner";
 import { RelatedTools } from "./RelatedTools";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ export function ToolShell({
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
               {tool.description}
             </p>
+            <HonestyBadgeRow badges={tool.honestyBadges} className="mt-2.5" />
           </div>
         </div>
       </div>

@@ -41,6 +41,10 @@ const FAQS = [
     q: "How accurate are conversions like PDF↔Word?",
     a: "Layout fidelity varies. We ship usable downloads with honest “best effort” labels where pixel-perfect conversion isn’t possible client-side.",
   },
+  {
+    q: "Do you claim “AI” for every smart-looking tool?",
+    a: "No. Only tools that run an on-device model (OCR/Tesseract, Summarize, Translate Marian, Ask PDF) or the Browser Translator API are labeled that way. Pattern finders, compress tips, and glossary stubs are Rules / heuristic — never marketed as AI. There is no cloud BYOK path today.",
+  },
 ];
 
 export default function HomePageClient() {

@@ -161,7 +161,7 @@ export default function CompressPage() {
             </div>
             {recommendation && (
               <div className="rounded-xl border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-[11px] leading-relaxed text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
-                <strong>Suggested:</strong>{" "}
+                <strong>Heuristic tip:</strong>{" "}
                 {COMPRESS_PRESETS.find((p) => p.id === recommendation.id)?.label}{" "}
                 — {recommendation.reason}
                 {recommendation.id !== preset && (
@@ -174,7 +174,7 @@ export default function CompressPage() {
                       setUserPicked(true);
                     }}
                   >
-                    Use suggested preset
+                    Use heuristic preset
                   </Button>
                 )}
               </div>

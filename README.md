@@ -13,6 +13,7 @@ A premium, privacy-first PDF suite that runs entirely in your browser — merge,
 - **Flagship editor** at `/edit` — annotations, signatures, forms, search, page ops, export
 - **Light & dark** — light-first with system toggle; preference persisted
 - **Real downloads** — no fake progress bars without results
+- **Honest labels** — on-device models vs Rules / heuristic; never fake “AI” or invent cloud BYOK
 
 ## Tool categories
 
@@ -24,7 +25,7 @@ A premium, privacy-first PDF suite that runs entirely in your browser — merge,
 | Edit | Full editor, Annotate, Crop, Watermark, Page numbers, Header/footer, Redact |
 | Security | Protect, Unlock, Flatten |
 | Sign & Forms | Sign, Fill form |
-| AI / Smart | OCR (Tesseract.js), Summarize / outline |
+| On-device models | OCR (Tesseract.js), Summarize, Translate (Marian / Browser Translator), Ask PDF |
 
 ## Stack
 

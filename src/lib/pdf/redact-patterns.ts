@@ -1,5 +1,6 @@
 /**
- * Smart redaction pattern finders — email, phone, Aadhaar-like, PAN-like, card-ish.
+ * Rules / heuristic redaction pattern finders — email, phone, Aadhaar-like, PAN-like, card-ish.
+ * Not AI / ML — regex and checksum heuristics only.
  * Client-side only; preview before hard wipe.
  */
 import { ensurePdfWorker, loadPdfDocument } from "./loader";

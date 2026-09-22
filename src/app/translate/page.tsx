@@ -200,7 +200,7 @@ export default function TranslatePage() {
       : method === "On-device Marian MT"
         ? `On-device model${modelId ? ` · ${modelId}` : ""}`
         : method === "Offline glossary (not real MT)"
-          ? "Offline glossary (not real MT)"
+          ? "Rules / heuristic · offline glossary (not real MT)"
           : "";
 
   return (
@@ -212,7 +212,7 @@ export default function TranslatePage() {
             <p className="text-xs text-zinc-500">
               Priority: (1) Chrome Translator API when available, (2) on-device
               Marian MT via transformers.js (EN↔HI prioritized), (3) offline
-              glossary stub labeled as not real MT. PDF text never uploaded.
+              Rules / heuristic glossary stub labeled as not real MT. PDF text never uploaded.
               Models lazy-load only on this route.
             </p>
             <div className="space-y-2">
@@ -251,7 +251,7 @@ export default function TranslatePage() {
               <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
                 No Marian pair for {sourceLang}→{targetLang}. Will use Browser
                 Translator API if present, otherwise{" "}
-                <strong>offline glossary (not real MT)</strong>.
+                <strong>Rules / heuristic offline glossary (not real MT)</strong>.
               </p>
             )}
             <SoftLimitsNote />

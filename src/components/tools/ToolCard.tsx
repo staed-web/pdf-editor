@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ToolDef } from "@/lib/tools";
 import { cn } from "@/lib/utils";
+import { HonestyBadgeRow } from "@/components/tools/HonestyBadge";
 
 export function ToolCard({
   tool,
@@ -37,6 +38,7 @@ export function ToolCard({
         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">
           {tool.description}
         </p>
+        <HonestyBadgeRow badges={tool.honestyBadges} className="mt-2.5" />
       </div>
     </Link>
   );

@@ -95,9 +95,9 @@ export default function SummarizePage() {
         setProgress(60);
         const bullets = localOutline(text);
         const md = [
-          `# Fast outline (no model)`,
+          `# Rules / heuristic outline`,
           ``,
-          `Heuristic extractive outline — no neural model downloaded.`,
+          `Rules / heuristic extractive outline — no neural model downloaded.`,
           ``,
           ...bullets.map((b) => `- ${b}`),
           ``,
@@ -111,7 +111,7 @@ export default function SummarizePage() {
         return {
           outline: bullets,
           summaryText: "",
-          badge: "Fast outline (no model)",
+          badge: "Rules / heuristic · extractive outline",
           bytes: new TextEncoder().encode(md),
           name: suggestedName(file.name, "outline", "md"),
           mime: "text/markdown",
@@ -199,7 +199,7 @@ export default function SummarizePage() {
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="fast-outline">
-                Fast outline (no model) — weak devices
+                Rules / heuristic outline — weak devices
               </Label>
               <Switch
                 id="fast-outline"

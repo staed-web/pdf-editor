@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { HonestyBadgeId } from "@/lib/honesty";
 import {
   Aperture,
   ArrowDownUp,
@@ -103,6 +104,8 @@ export interface ToolDef {
   accept?: string;
   multiple?: boolean;
   status?: "full" | "partial";
+  /** How the tool actually works — shown on cards / tool shells. Never invent BYOK. */
+  honestyBadges?: HonestyBadgeId[];
 }
 
 export const CATEGORY_LABELS: Record<ToolCategory, string> = {
@@ -112,7 +115,7 @@ export const CATEGORY_LABELS: Record<ToolCategory, string> = {
   edit: "Edit & Annotate",
   security: "Security",
   sign: "Sign & Forms",
-  ai: "AI / Smart",
+  ai: "On-device models",
   view: "View & Utility",
   batch: "Batch",
 };
@@ -690,11 +693,13 @@ export const TOOLS: ToolDef[] = [
     href: "/redact",
     name: "Redact PDF",
     short: "Black-box",
-    description: "Cover sensitive regions with black boxes and flatten.",
+    description:
+      "Cover sensitive regions with black boxes (hard wipe optional). Pattern find uses Rules / heuristic regex — not AI.",
     category: "edit",
     icon: EyeOff,
     accept: "application/pdf",
     status: "partial",
+    honestyBadges: ["rules-heuristic"],
   },
   {
     slug: "bates-number",
@@ -972,17 +977,19 @@ export const TOOLS: ToolDef[] = [
     accept: "application/pdf",
   },
 
-  // —— AI ——
+  // —— On-device models ——
   {
     slug: "ocr",
     href: "/ocr",
     name: "OCR PDF",
     short: "Make searchable",
-    description: "OCR scanned PDFs in-browser (Tesseract) → searchable PDF with Hindi/English languages.",
+    description:
+      "On-device OCR via Tesseract.js → searchable PDF (Hindi/English and more). Not a cloud LLM.",
     category: "ai",
     icon: ScanText,
     accept: "application/pdf",
     status: "partial",
+    honestyBadges: ["on-device-model"],
   },
   {
     slug: "summarize",
@@ -990,11 +997,12 @@ export const TOOLS: ToolDef[] = [
     name: "Summarize PDF",
     short: "On-device summary",
     description:
-      "On-device DistilBART summary (transformers.js) with map-reduce chunking, or fast heuristic outline. No upload, no paid API.",
+      "On-device DistilBART summary (transformers.js) with map-reduce chunking, or a Rules / heuristic extractive outline. No upload, no paid API.",
     category: "ai",
     icon: Sparkles,
     accept: "application/pdf",
     featured: true,
+    honestyBadges: ["on-device-model", "rules-heuristic"],
   },
   {
     slug: "translate",
@@ -1002,22 +1010,25 @@ export const TOOLS: ToolDef[] = [
     name: "Translate PDF",
     short: "Browser / on-device MT",
     description:
-      "Chrome Translator API when available, else on-device Marian MT (EN↔HI), else labeled glossary stub. No paid MT, no upload.",
+      "Browser Translator API when available, else on-device Marian MT (EN↔HI), else Rules / heuristic glossary stub (not real MT). No paid MT, no upload.",
     category: "ai",
     icon: Languages,
     accept: "application/pdf",
     featured: true,
+    honestyBadges: ["browser-translator", "on-device-model", "rules-heuristic"],
   },
   {
     slug: "chat-pdf",
     href: "/chat-pdf",
     name: "Ask PDF",
     short: "On-device RAG chat",
-    description: "On-device RAG: MiniLM embeddings + DistilBERT QA (transformers.js). Cites pages; optional OCR for scant scans. No upload, no paid LLM.",
+    description:
+      "On-device RAG: MiniLM embeddings + DistilBERT QA (transformers.js). Cites pages; optional OCR for scant scans. No upload, no paid LLM.",
     category: "ai",
     icon: MessageSquare,
     accept: "application/pdf",
     featured: true,
+    honestyBadges: ["on-device-model"],
   },
 
   // —— View ——
