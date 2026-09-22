@@ -1,76 +1,288 @@
 "use client";
-import { useState } from "react";
+
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
-import { ResultBar } from "@/components/tools/ResultBar";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  FileSummary,
+  ProcessProgress,
+  ProcessError,
+  ProcessSuccess,
+  SoftLimitsNote,
+} from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
+import { useProcessJob } from "@/hooks/useProcessJob";
+import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { extractTextFromPdf } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
+import {
+  inspectPdfFile,
+  suggestedName,
+  type PdfFileSummary,
+} from "@/lib/pdf/process-ux";
+import {
+  SUMMARIZE_MODEL_ID,
+  SUMMARIZE_MODEL_SIZE_LABEL,
+  localOutline,
+} from "@/lib/ai/summarize-ondevice";
 
 const tool = getTool("summarize")!;
 
-function localOutline(text: string) {
-  const sentences = text
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 40);
-  const scored = sentences.map((s) => {
-    const words = s.toLowerCase().split(/\W+/);
-    const score = words.filter((w) => w.length > 5).length + (s.length > 120 ? 1 : 0);
-    return { s, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, Math.min(8, Math.max(3, Math.floor(sentences.length * 0.15))));
-  // keep original order
-  const set = new Set(top.map((t) => t.s));
-  return sentences.filter((s) => set.has(s));
-}
-
 export default function SummarizePage() {
   const [file, setFile] = useState<File | null>(null);
+  const [summary, setSummary] = useState<PdfFileSummary | null>(null);
+  const [fastOnly, setFastOnly] = useState(false);
   const [outline, setOutline] = useState<string[]>([]);
-  const [full, setFull] = useState("");
-  const [result, setResult] = useState<Uint8Array | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
+  const [badge, setBadge] = useState("");
+  const [result, setResult] = useState<{
+    bytes: Uint8Array;
+    name: string;
+    mime: string;
+  } | null>(null);
+  const job = useProcessJob();
+
+  const onFiles = useCallback(
+    async (fs: File[]) => {
+      const f = fs.find(isPdfFile);
+      if (!f) return toast.error("PDF only");
+      setFile(f);
+      setOutline([]);
+      setSummaryText("");
+      setBadge("");
+      setResult(null);
+      job.resetError();
+      setSummary(await inspectPdfFile(f));
+    },
+    [job.resetError]
+  );
+
+  useHandoffIntake("/summarize", async (f) => {
+    await onFiles([f]);
+  });
+
+  const resetAll = () => {
+    setFile(null);
+    setSummary(null);
+    setOutline([]);
+    setSummaryText("");
+    setBadge("");
+    setResult(null);
+    job.resetError();
+  };
 
   const run = async () => {
     if (!file) return;
-    setBusy(true);
-    try {
+    const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+      setLabel("Extracting text…");
+      setProgress(5);
       const pages = await extractTextFromPdf(await file.arrayBuffer());
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
       const text = pages.map((p) => p.text).join("\n");
-      setFull(text);
-      const bullets = localOutline(text);
-      setOutline(bullets);
-      const md = `# Outline\n\n${bullets.map((b)=>`- ${b}`).join("\n")}\n\n---\n\n# Extracted text\n\n${text}`;
-      setResult(new TextEncoder().encode(md));
-      toast.success(bullets.length ? "Outline ready" : "Little extractable text — try OCR");
-    } catch {
-      toast.error("Failed");
-    } finally { setBusy(false); }
+      if (!text.trim()) {
+        throw new Error(
+          "Little or no extractable text. Try OCR first if this is a scan."
+        );
+      }
+
+      if (fastOnly) {
+        setLabel("Building fast outline (no model)…");
+        setProgress(60);
+        const bullets = localOutline(text);
+        const md = [
+          `# Fast outline (no model)`,
+          ``,
+          `Heuristic extractive outline — no neural model downloaded.`,
+          ``,
+          ...bullets.map((b) => `- ${b}`),
+          ``,
+          `---`,
+          ``,
+          `# Extracted text`,
+          ``,
+          text.slice(0, 100000),
+        ].join("\n");
+        setProgress(100);
+        return {
+          outline: bullets,
+          summaryText: "",
+          badge: "Fast outline (no model)",
+          bytes: new TextEncoder().encode(md),
+          name: suggestedName(file.name, "outline", "md"),
+          mime: "text/markdown",
+        };
+      }
+
+      setLabel(`Loading on-device model (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
+      setProgress(8);
+      const { summarizeOnDevice } = await import("@/lib/ai/summarize-ondevice");
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+
+      const ac = new AbortController();
+      const poll = setInterval(() => {
+        if (isCancelled()) ac.abort();
+      }, 200);
+
+      try {
+        const resultSm = await summarizeOnDevice(text, {
+          signal: ac.signal,
+          onProgress: (pct, label) => {
+            if (isCancelled()) {
+              ac.abort();
+              return;
+            }
+            setProgress(pct);
+            setLabel(label);
+          },
+        });
+        if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+
+        const bullets = localOutline(text);
+        const md = [
+          `# On-device summary`,
+          ``,
+          `Model: \`${resultSm.modelId}\` · chunks: ${resultSm.chunks} · badge: On-device model`,
+          `First-run download ≈ ${SUMMARIZE_MODEL_SIZE_LABEL} (cached in browser after).`,
+          ``,
+          resultSm.summary,
+          ``,
+          `---`,
+          ``,
+          `# Extractive outline (bonus)`,
+          ``,
+          ...bullets.map((b) => `- ${b}`),
+          ``,
+          `---`,
+          ``,
+          `# Extracted text (truncated)`,
+          ``,
+          text.slice(0, 50000),
+        ].join("\n");
+
+        return {
+          outline: bullets,
+          summaryText: resultSm.summary,
+          badge: `On-device model · ${resultSm.modelId}`,
+          bytes: new TextEncoder().encode(md),
+          name: suggestedName(file.name, "summary", "md"),
+          mime: "text/markdown",
+        };
+      } finally {
+        clearInterval(poll);
+      }
+    });
+
+    if (!out) return;
+    setOutline(out.outline);
+    setSummaryText(out.summaryText);
+    setBadge(out.badge);
+    setResult({ bytes: out.bytes, name: out.name, mime: out.mime });
+    toast.success(out.summaryText ? "On-device summary ready" : "Outline ready");
   };
 
   return (
     <MarketingShell>
-      <ToolShell tool={tool} options={
-        <>
-          <p className="text-xs text-zinc-500">Local extract + heuristic outline. No paid API required.</p>
-          <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Working…":"Extract & outline"}</Button>
-        </>
-      }>
-        <DropZone accept="application/pdf" onFiles={(fs)=>{ const f=fs.find(isPdfFile); if(!f) return toast.error("PDF only"); setFile(f); setOutline([]); setResult(null); }} label={file?file.name:"Drop a PDF"} />
+      <ToolShell
+        tool={tool}
+        options={
+          <>
+            <p className="text-xs text-zinc-500">
+              Privacy-first: text never leaves this device. Primary path runs{" "}
+              <code className="text-[10px]">{SUMMARIZE_MODEL_ID}</code> via
+              transformers.js (lazy-loaded only on this route). First download{" "}
+              {SUMMARIZE_MODEL_SIZE_LABEL}, then cached in the browser.
+            </p>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="fast-outline">
+                Fast outline (no model) — weak devices
+              </Label>
+              <Switch
+                id="fast-outline"
+                checked={fastOnly}
+                onCheckedChange={setFastOnly}
+              />
+            </div>
+            {!fastOnly && (
+              <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                On-device model · English abstractive summary. Long PDFs are
+                chunked (map-reduce). Cancel anytime while downloading or
+                summarizing.
+              </p>
+            )}
+            <SoftLimitsNote />
+            <Button
+              className="w-full"
+              disabled={!file || job.busy}
+              onClick={run}
+            >
+              {job.busy
+                ? "Working…"
+                : fastOnly
+                  ? "Extract & outline"
+                  : "Summarize on-device"}
+            </Button>
+          </>
+        }
+      >
+        <DropZone
+          accept="application/pdf"
+          onFiles={onFiles}
+          label={file ? file.name : "Drop a PDF"}
+        />
+        <FileSummary summary={summary} />
+        {job.busy && (
+          <ProcessProgress
+            value={job.progress}
+            label={job.progressLabel}
+            onCancel={job.cancel}
+          />
+        )}
+        <ProcessError error={job.error} onDismiss={job.resetError} />
+        {badge && (
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+            {badge}
+          </p>
+        )}
+        {summaryText && (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm leading-relaxed dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Summary
+            </p>
+            <p className="whitespace-pre-wrap">{summaryText}</p>
+          </div>
+        )}
         {outline.length > 0 && (
           <ul className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <li className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {summaryText ? "Extractive outline (bonus)" : "Outline"}
+            </li>
             {outline.map((b, i) => (
-              <li key={i} className="flex gap-2"><span className="text-amber-600">•</span><span>{b}</span></li>
+              <li key={i} className="flex gap-2">
+                <span className="text-amber-600">•</span>
+                <span>{b}</span>
+              </li>
             ))}
           </ul>
         )}
-        {result && <ResultBar fileName="outline.md" size={result.byteLength} onDownload={()=>downloadBytes(result,"outline.md","text/markdown")} />}
+        {result && (
+          <ProcessSuccess
+            fileName={result.name}
+            size={result.bytes.byteLength}
+            mime={result.mime}
+            blob={result.bytes}
+            meta={badge || undefined}
+            fromTool="summarize"
+            onDownload={() =>
+              downloadBytes(result.bytes, result.name, result.mime)
+            }
+            onProcessAnother={resetAll}
+          />
+        )}
       </ToolShell>
     </MarketingShell>
   );

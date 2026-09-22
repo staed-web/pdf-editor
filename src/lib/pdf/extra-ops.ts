@@ -2015,84 +2015,17 @@ export function extractiveAnswer(
   return { answer, evidence: top };
 }
 
-/** Glossary-mode offline “translate”: swap known terms; optional Web Translator API */
+/** Prefer Chrome Translator → Marian on-device → glossary stub (see translate-ondevice). */
 export async function translateTextLocal(
   text: string,
   targetLang: string
 ): Promise<{ text: string; method: string }> {
-  // Prefer Chrome Translator API if present
-  try {
-    // @ts-expect-error experimental
-    if (typeof Translator !== "undefined") {
-      // @ts-expect-error experimental
-      const translator = await Translator.create({
-        sourceLanguage: "en",
-        targetLanguage: targetLang,
-      });
-      const out = await translator.translate(text.slice(0, 8000));
-      return { text: out, method: "Browser Translator API" };
-    }
-  } catch {
-    /* */
-  }
-
-  // Tiny glossary stub for demo offline mode
-  const glossary: Record<string, Record<string, string>> = {
-    es: {
-      the: "el/la",
-      and: "y",
-      of: "de",
-      to: "a",
-      document: "documento",
-      page: "página",
-      confidential: "confidencial",
-      agreement: "acuerdo",
-      date: "fecha",
-      signature: "firma",
-    },
-    fr: {
-      the: "le/la",
-      and: "et",
-      of: "de",
-      to: "à",
-      document: "document",
-      page: "page",
-      confidential: "confidentiel",
-      agreement: "accord",
-      date: "date",
-      signature: "signature",
-    },
-    de: {
-      the: "der/die/das",
-      and: "und",
-      of: "von",
-      to: "zu",
-      document: "Dokument",
-      page: "Seite",
-      confidential: "vertraulich",
-      agreement: "Vereinbarung",
-      date: "Datum",
-      signature: "Unterschrift",
-    },
-  };
-  const g = glossary[targetLang] || glossary.es;
-  const out = text
-    .split(/(\b)/)
-    .map((tok) => {
-      const low = tok.toLowerCase();
-      if (g[low]) {
-        const rep = g[low];
-        return tok[0] === tok[0]?.toUpperCase()
-          ? rep.charAt(0).toUpperCase() + rep.slice(1)
-          : rep;
-      }
-      return tok;
-    })
-    .join("");
-  return {
-    text: `[Glossary mode → ${targetLang} — free local stub, not full MT]\n\n${out}`,
-    method: "Offline glossary stub",
-  };
+  const { translateOnDevice } = await import("@/lib/ai/translate-ondevice");
+  const out = await translateOnDevice(text, {
+    targetLang,
+    sourceLang: "en",
+  });
+  return { text: out.text, method: out.method };
 }
 
 export { imagesToPdf };

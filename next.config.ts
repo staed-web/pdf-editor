@@ -27,13 +27,26 @@ const withSerwist = withSerwistInit({
     /ads\.txt$/,
     /robots\.txt$/,
     /sitemap\.xml$/,
+    // transformers.js / onnxruntime — runtime HF CDN + Cache API, not SW precache
+    /onnxruntime/i,
+    /transformers/i,
   ],
 });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
-  transpilePackages: ["@cantoo/pdf-lib"],
+  transpilePackages: ["@cantoo/pdf-lib", "@xenova/transformers"],
+  serverExternalPackages: ["sharp", "onnxruntime-node"],
+  webpack: (config) => {
+    // Browser-only ML stack — stub Node natives so client bundles stay clean
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      sharp$: false,
+      "onnxruntime-node$": false,
+    };
+    return config;
+  },
 };
 
 export default withSerwist(nextConfig);
