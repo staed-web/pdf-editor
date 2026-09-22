@@ -24,7 +24,7 @@ export const EMBED_MODEL_ID = "";
 /** @deprecated Removed — no Xenova chat downloads. */
 export const QA_MODEL_ID = "";
 /** @deprecated No chat model download on this route. */
-export const CHAT_MODELS_SIZE_LABEL = "no download (browser AI or basic search)";
+export const CHAT_MODELS_SIZE_LABEL = "runs on your device";
 
 export type PageText = { page: number; text: string };
 
@@ -367,12 +367,12 @@ function basicSearchAnswer(
   );
   return {
     answer: lines.length
-      ? `Basic search (no browser AI) — closest passages:\n\n${lines.join("\n\n")}`
-      : "No matching passages found. Try rephrasing, or OCR if this is a scan.",
+      ? `Closest matching passages:\n\n${lines.join("\n\n")}`
+      : "No matching passages found. Try rephrasing, or turn on OCR if this is a scan.",
     citations,
     confidence: scored[0]?.score ? Math.min(1, scored[0].score / 8) : 0,
     method: "basic-search",
-    engineLabel: "Basic search (no browser AI)",
+    engineLabel: "Private · on your device",
   };
 }
 
@@ -402,11 +402,11 @@ export async function answerWithIndex(
 
   const usable = await isLanguageModelUsable();
   if (!usable) {
-    onProgress?.(100, "Basic search ready");
+    onProgress?.(100, "Passages ready");
     return basicSearchAnswer(scored, citations);
   }
 
-  onProgress?.(80, "Using your browser’s built-in on-device AI…");
+  onProgress?.(80, "Answering on your device…");
   const session = await createLanguageModelSession({
     signal,
     onProgress,
@@ -417,13 +417,13 @@ export async function answerWithIndex(
   });
 
   if (!session) {
-    onProgress?.(100, "Basic search ready");
+    onProgress?.(100, "Passages ready");
     return basicSearchAnswer(scored, citations);
   }
 
   try {
     throwIfAborted(signal);
-    onProgress?.(90, "Prompting browser AI with page context…");
+    onProgress?.(90, "Writing answer…");
     const prompt = [
       "PDF excerpts:",
       context || "(no excerpts)",
@@ -438,15 +438,15 @@ export async function answerWithIndex(
     return {
       answer:
         raw ||
-        "The browser AI returned an empty answer. Try rephrasing your question.",
+        "Could not generate an answer. Try rephrasing your question.",
       citations,
       confidence: scored[0]?.score ? Math.min(1, 0.5 + scored[0].score / 10) : 0.5,
       method: "browser-prompt",
-      engineLabel: "Uses your browser’s built-in on-device AI",
+      engineLabel: "Private · on your device",
     };
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    onProgress?.(100, "Basic search ready");
+    onProgress?.(100, "Passages ready");
     return basicSearchAnswer(scored, citations);
   } finally {
     try {
@@ -492,7 +492,7 @@ export async function probeChatEngine(): Promise<{
   return {
     browserAi,
     label: browserAi
-      ? "Uses your browser’s built-in on-device AI"
-      : "Basic search (no browser AI)",
+      ? "Private · on your device"
+      : "Private · on your device",
   };
 }

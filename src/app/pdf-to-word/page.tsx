@@ -84,7 +84,7 @@ export default function PdfToWordPage() {
           <>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Free local approximation: clusters text into lines/paragraphs, keeps
-              bold/italic/size heuristics, and (Rich mode) embeds page JPEGs when a
+              bold/italic/size detection, and (Rich mode) embeds page JPEGs when a
               page has no extractable text. Not a perfect Word clone.
             </p>
             <div className="space-y-2">

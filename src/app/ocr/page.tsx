@@ -124,14 +124,13 @@ export default function OcrPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Runs Tesseract.js in your browser (loaded only when you OCR).
-              Searchable mode embeds page images plus an invisible text layer
-              from word boxes. Hindi (hin / eng+hin) lazy-loads a Devanagari
-              font so Devanagari glyphs are actually searchable in the PDF —
-              not image-only.
+              Make scanned PDFs searchable. Recognition runs entirely on your
+              device — nothing is uploaded. Searchable mode keeps page images
+              and adds a selectable text layer. Hindi includes Devanagari
+              support so text is actually searchable.
             </p>
             <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-              On-device model · Tesseract.js — not a cloud LLM.
+              Private · on your device · no upload
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="searchable">Searchable PDF output</Label>
@@ -214,7 +213,7 @@ export default function OcrPage() {
             size={result.bytes.byteLength}
             blob={result.bytes}
             mime={result.mime}
-            meta="On-device model · Tesseract.js"
+            meta="Private · on your device"
             fromTool="ocr"
             onDownload={() =>
               downloadBytes(result.bytes, result.name, result.mime)

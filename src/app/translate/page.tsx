@@ -191,17 +191,15 @@ export default function TranslatePage() {
     setPdfResult(
       out.pdfBytes ? { bytes: out.pdfBytes, name: out.pdfName } : null
     );
-    toast.success(`Translated via ${out.method}`);
+    toast.success("Translation ready");
   };
 
   const badge =
-    method === "Browser Translator API"
-      ? "Browser Translator API"
-      : method === "On-device Marian MT"
-        ? `On-device model${modelId ? ` · ${modelId}` : ""}`
-        : method === "Offline glossary (not real MT)"
-          ? "Rules / heuristic · offline glossary (not real MT)"
-          : "";
+    method === "browser" || method === "on-device"
+      ? "Private · on your device"
+      : method === "glossary"
+        ? "Basic glossary · on your device"
+        : "";
 
   return (
     <MarketingShell>
@@ -210,10 +208,9 @@ export default function TranslatePage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Priority: (1) Chrome Translator API when available, (2) on-device
-              Marian MT via transformers.js (EN↔HI prioritized), (3) offline
-              Rules / heuristic glossary stub labeled as not real MT. PDF text never uploaded.
-              Models lazy-load only on this route.
+              Translate PDF text privately on your device. Nothing is uploaded.
+              A language pack may download the first time you translate a pair,
+              then it stays cached in your browser.
             </p>
             <div className="space-y-2">
               <Label>Target language</Label>
@@ -241,17 +238,17 @@ export default function TranslatePage() {
               </select>
             </div>
             {pairInfo ? (
-              <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                Fallback model if browser API missing:{" "}
-                <code className="text-[10px]">{pairInfo.modelId}</code> (
-                {pairInfo.sizeLabel} first download, then cached). Progress +
-                cancel shown during download/inference.
+              <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
+                Private · on your device
+                {pairInfo.sizeLabel
+                  ? ` · language pack ~${pairInfo.sizeLabel} on first use`
+                  : ""}
               </p>
             ) : (
               <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                No Marian pair for {sourceLang}→{targetLang}. Will use Browser
-                Translator API if present, otherwise{" "}
-                <strong>Rules / heuristic offline glossary (not real MT)</strong>.
+                No full language pack for {sourceLang}→{targetLang}. Will use
+                your browser’s built-in translator when available, otherwise a
+                basic glossary.
               </p>
             )}
             <SoftLimitsNote />

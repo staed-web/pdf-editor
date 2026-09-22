@@ -43,7 +43,7 @@ const FAQS = [
   },
   {
     q: "Do you claim “AI” for every smart-looking tool?",
-    a: "No. On-device model badges are for OCR/Tesseract and optional Marian translate / opt-in DistilBART. Translate prefers Browser Translator API; Summarize prefers Browser Summarizer API; Ask PDF prefers Browser Prompt API (no MiniLM/DistilBERT). Pattern finders, compress tips, and glossary stubs are Rules / heuristic — never marketed as AI. There is no cloud BYOK path today.",
+    a: "No. Smart tools like Ask PDF, Summarize, Translate, and OCR run privately on your device (or use features your browser already provides). We do not upload your PDFs to paid cloud AI. Pattern finders and similar helpers are simple on-device rules — not marketed as AI. There is no cloud BYOK path today.",
   },
 ];
 

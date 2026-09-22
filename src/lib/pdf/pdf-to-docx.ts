@@ -356,7 +356,7 @@ export async function convertPdfToDocx(
 
   const document = new Document({
     creator: "InstantPDFEdit",
-    description: "Free local PDF→Word approximation (layout heuristics)",
+    description: "Free local PDF→Word approximation (layout best-effort)",
     sections: [
       {
         properties: {

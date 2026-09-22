@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -52,9 +52,6 @@ export default function ChatPdfPage() {
   const [q, setQ] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [badge, setBadge] = useState("");
-  const [engineHint, setEngineHint] = useState(
-    "Checking browser AI availability…"
-  );
   const [result, setResult] = useState<{
     bytes: Uint8Array;
     name: string;
@@ -63,22 +60,6 @@ export default function ChatPdfPage() {
   const sourceBufRef = useRef<ArrayBuffer | null>(null);
   const indexRef = useRef<ChatIndex | null>(null);
   const job = useProcessJob();
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { probeChatEngine } = await import("@/lib/ai/chat-ondevice");
-        const probe = await probeChatEngine();
-        if (!cancelled) setEngineHint(probe.label);
-      } catch {
-        if (!cancelled) setEngineHint("Basic search (no browser AI)");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const onFiles = useCallback(
     async (fs: File[]) => {
@@ -99,7 +80,7 @@ export default function ChatPdfPage() {
         const extracted = await extractTextFromPdf(sourceBufRef.current!);
         setPages(extracted);
         toast.success(
-          `Loaded ${extracted.length} page(s) — ask to index locally`
+          `Loaded ${extracted.length} page(s) — ready to ask`
         );
       } catch {
         toast.error("Could not extract text");
@@ -132,8 +113,7 @@ export default function ChatPdfPage() {
       `# Ask PDF`,
       ``,
       `File: ${file.name}`,
-      `Engine: ${engine}`,
-      `Note: No Xenova MiniLM/DistilBERT downloads on this route.`,
+      `Processed privately on your device.`,
       ``,
       ...msgs.flatMap((m) => {
         if (m.role === "user") return [`## Q`, m.text, ``];
@@ -188,9 +168,9 @@ export default function ChatPdfPage() {
         if (!idx) {
           const doOcr = enableOcr && needsOcr(pageTexts!);
           if (doOcr) {
-            setLabel("Scant text detected — OCR on-device…");
+            setLabel("Improving scanned pages…");
           } else {
-            setLabel("Building keyword index (no model download)…");
+            setLabel("Preparing your PDF…");
           }
           idx = await buildChatIndex(pageTexts!, {
             signal: ac.signal,
@@ -253,20 +233,15 @@ export default function ChatPdfPage() {
     ];
     setMessages(next);
     setBadge(out.badge);
-    setEngineHint(out.badge);
     setQ("");
     exportTranscript(next, out.badge);
-    toast.success(
-      out.method === "browser-prompt"
-        ? "Browser AI answer ready"
-        : "Basic search passages ready"
-    );
+    toast.success("Answer ready");
   };
 
   const indexReady = !!index;
   const scantHint =
     pages && pagesNeedOcr(pages)
-      ? "Many pages look scant — OCR toggle recommended."
+      ? "Many pages look like scans — OCR recommended."
       : null;
 
   return (
@@ -276,21 +251,15 @@ export default function ChatPdfPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Ask questions about a PDF privately. Prefers your browser’s
-              built-in Prompt API (LanguageModel) with keyword page retrieval —
-              <strong className="font-medium text-zinc-700 dark:text-zinc-300">
-                {" "}
-                no MiniLM / DistilBERT downloads
-              </strong>
-              . PDF text never leaves this device. Soft cap ~{CHAT_MAX_PAGES}{" "}
-              pages.
+              Ask questions about your PDF. Everything stays on your device —
+              nothing is uploaded. Works best under ~{CHAT_MAX_PAGES} pages.
             </p>
             <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-              {engineHint}
+              Private · in-browser · no upload
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="ocr-scant">
-                OCR scant pages (lazy Tesseract)
+                Improve scanned pages with OCR
               </Label>
               <Switch
                 id="ocr-scant"
@@ -306,12 +275,12 @@ export default function ChatPdfPage() {
             )}
             {indexReady && (
               <p className="text-[11px] text-zinc-500">
-                Indexed {index!.chunks.length} chunks · {index!.pageCount}{" "}
-                pages · keyword retrieval
+                Ready · {index!.pageCount} page
+                {index!.pageCount === 1 ? "" : "s"}
                 {index!.ocrPages.length
-                  ? ` · OCR p.${index!.ocrPages.join(", ")}`
+                  ? ` · OCR on ${index!.ocrPages.length} page${index!.ocrPages.length === 1 ? "" : "s"}`
                   : ""}
-                {index!.truncated ? " · truncated to soft limits" : ""}
+                {index!.truncated ? " · trimmed to soft limits" : ""}
               </p>
             )}
             <div className="space-y-2">
@@ -340,7 +309,7 @@ export default function ChatPdfPage() {
                 ? "Working…"
                 : indexReady
                   ? "Ask"
-                  : "Index & ask"}
+                  : "Ask"}
             </Button>
           </>
         }
@@ -379,15 +348,7 @@ export default function ChatPdfPage() {
                         : "text-xs font-semibold text-emerald-700 dark:text-emerald-400"
                     }
                   >
-                    {m.role === "user"
-                      ? "You"
-                      : m.method === "browser-prompt"
-                        ? "Browser AI"
-                        : "Basic search"}
-                    {m.method ? ` · ${m.method}` : ""}
-                    {typeof m.confidence === "number"
-                      ? ` · score ${m.confidence.toFixed(2)}`
-                      : ""}
+                    {m.role === "user" ? "You" : "Ask PDF"}
                   </p>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
                     {m.text}
@@ -399,7 +360,7 @@ export default function ChatPdfPage() {
                           <span className="font-medium text-amber-700 dark:text-amber-400">
                             p.{c.page}
                           </span>{" "}
-                          · score {c.score.toFixed(3)} · {c.snippet}
+                          · {c.snippet}
                         </li>
                       ))}
                     </ul>

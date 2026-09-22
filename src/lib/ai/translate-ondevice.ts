@@ -15,9 +15,9 @@ import {
 export type TranslateProgress = (pct: number, label: string) => void;
 
 export type TranslateMethod =
-  | "Browser Translator API"
-  | "On-device Marian MT"
-  | "Offline glossary (not real MT)";
+  | "browser"
+  | "on-device"
+  | "glossary";
 
 /** Marian Opus-MT models hosted as Xenova ONNX (quantized ≈ 70–90 MB each). */
 export const MARIAN_MODELS: Record<
@@ -132,7 +132,7 @@ async function tryBrowserTranslator(
   try {
     // @ts-expect-error experimental Translator API
     if (typeof Translator === "undefined") return null;
-    onProgress?.(5, "Using Browser Translator API…");
+    onProgress?.(5, "Translating on your device…");
     // @ts-expect-error experimental
     const availability = await Translator.availability?.({
       sourceLanguage,
@@ -171,7 +171,7 @@ async function tryBrowserTranslator(
       );
       outs.push(await translator.translate(parts[i]));
     }
-    onProgress?.(100, "Translation ready (Browser Translator API)");
+    onProgress?.(100, "Translation ready");
     return outs.join("\n\n");
   } catch {
     return null;
@@ -243,7 +243,7 @@ function glossaryStub(text: string, targetLang: string): string {
       return tok;
     })
     .join("");
-  return `[Offline glossary (not real MT) → ${targetLang}]\n\n${out}`;
+  return `[Basic glossary → ${targetLang}]\n\n${out}`;
 }
 
 export function resolveMarianPair(
@@ -275,7 +275,7 @@ export async function translateOnDevice(
 
   const cleaned = text.replace(/\r\n/g, "\n").trim();
   if (!cleaned) {
-    return { text: "", method: "Offline glossary (not real MT)" };
+    return { text: "", method: "glossary" };
   }
 
   // 1. Browser Translator API
@@ -290,11 +290,11 @@ export async function translateOnDevice(
     if (browserOut != null) {
       return {
         text: browserOut,
-        method: "Browser Translator API",
+        method: "browser",
       };
     }
     if (prefer === "browser") {
-      throw new Error("Browser Translator API unavailable");
+      throw new Error("Built-in translator unavailable");
     }
   }
 
@@ -313,7 +313,7 @@ export async function translateOnDevice(
             Math.min(42, Math.round(info.progress * 0.42)),
             info.file
               ? `Downloading ${info.file}… ${Math.round(info.progress)}%`
-              : `Loading Marian… ${Math.round(info.progress)}%`
+              : `Loading language pack… ${Math.round(info.progress)}%`
           );
         }
       };
@@ -329,10 +329,10 @@ export async function translateOnDevice(
         );
         outs.push(unwrapTranslation(await translator(parts[i])));
       }
-      onProgress?.(100, "Translation ready (on-device Marian)");
+      onProgress?.(100, "Translation ready");
       return {
         text: outs.join(" "),
-        method: "On-device Marian MT",
+        method: "on-device",
         modelId: pair.modelId,
       };
     }
@@ -342,7 +342,7 @@ export async function translateOnDevice(
   onProgress?.(90, "Falling back to offline glossary (not real MT)…");
   const stub = glossaryStub(cleaned, targetLang);
   onProgress?.(100, "Glossary stub ready");
-  return { text: stub, method: "Offline glossary (not real MT)" };
+  return { text: stub, method: "glossary" };
 }
 
 /** Keep for any older callers; now delegates to translateOnDevice. */

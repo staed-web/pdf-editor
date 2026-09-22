@@ -26,7 +26,7 @@ export default function PrivacyPage() {
       <h3>100% local / never uploaded</h3>
       <p>
         Most InstantPDFEdit tools (merge, split, compress, organize, annotate,
-        sign, protect, OCR via Tesseract.js in-browser, and similar) read and
+        sign, protect, OCR, and similar) read and
         process files entirely on your device using libraries such as pdf.js and
         pdf-lib. Bytes stay in page memory (and, if you use Recents, optionally
         in IndexedDB on your device). They are <strong>never uploaded</strong>{" "}
@@ -50,13 +50,10 @@ export default function PrivacyPage() {
       <h3>External third-party services we do not use for PDFs</h3>
       <p>
         InstantPDFEdit does not send your PDF contents to paid cloud OCR, LLM,
-        or e-sign backends for the shipped free tools. OCR uses on-device Tesseract;
-        Summarize prefers the Browser Summarizer API (DistilBART is opt-in);
-        Translate uses the Browser Translator API and/or on-device Marian MT;
-        Ask PDF prefers the Browser Prompt API and does not download Xenova
-        MiniLM/DistilBERT chat models. Heuristic paths are
-        labeled Rules / heuristic — not AI. There is no optional cloud (BYOK)
-        upload path today.
+        or e-sign backends for the shipped free tools. OCR, Summarize, Translate,
+        and Ask PDF run on your device (or via APIs your browser itself provides).
+        Nothing is uploaded to InstantPDFEdit for those tools. There is no
+        optional cloud (BYOK) upload path today.
       </p>
 
       <h2>Browser storage</h2>
@@ -115,8 +112,8 @@ export default function PrivacyPage() {
 
       <h2>Third-party libraries</h2>
       <p>
-        The app loads open-source libraries (for example pdf.js, pdf-lib,
-        Tesseract.js, Serwist) in your browser to do the work. Those libraries
+        The app loads open-source libraries (for example pdf.js, pdf-lib, and
+        related helpers) in your browser to do the work. Those libraries
         run locally with your file bytes unless a specific tool documents a
         browser API call.
       </p>

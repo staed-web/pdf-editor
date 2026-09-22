@@ -1,6 +1,6 @@
 /**
- * Honesty badges — label how a tool actually works.
- * Never call a rules/heuristic path "AI". Do not invent cloud/BYOK badges.
+ * Honesty badges — privacy-first labels for tool cards / shells.
+ * Implementation details (model IDs, Prompt API, etc.) stay out of UI copy.
  */
 
 export type HonestyBadgeId =
@@ -12,11 +12,11 @@ export type HonestyBadgeId =
   | "optional-cloud-byok";
 
 export const HONESTY_BADGE_LABELS: Record<HonestyBadgeId, string> = {
-  "on-device-model": "On-device model",
-  "browser-translator": "Browser Translator API",
-  "browser-prompt-api": "Browser Prompt API",
-  "browser-summarizer-api": "Browser Summarizer API",
-  "rules-heuristic": "Rules / heuristic",
+  "on-device-model": "Private · on your device",
+  "browser-translator": "Private · on your device",
+  "browser-prompt-api": "Private · in-browser · no upload",
+  "browser-summarizer-api": "Private · on your device",
+  "rules-heuristic": "Private · on your device",
   "optional-cloud-byok": "Optional cloud (BYOK)",
 };
 

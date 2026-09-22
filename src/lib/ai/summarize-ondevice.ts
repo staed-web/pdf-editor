@@ -120,7 +120,7 @@ async function summarizeWithBrowserApi(
       );
       partials.push((await summarizer.summarize(chunks[i])).trim());
     }
-    onProgress?.(100, "Summary ready (Browser Summarizer API)");
+    onProgress?.(100, "Summary ready");
     try {
       summarizer.destroy?.();
     } catch {
@@ -140,7 +140,7 @@ async function summarizeWithXenova(
   signal?: AbortSignal,
   onProgress?: SummarizeProgress
 ): Promise<{ summary: string; chunks: number; modelId: string }> {
-  onProgress?.(2, `Preparing opt-in DistilBART (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
+  onProgress?.(2, `Preparing deeper summary (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
 
   const downloadPct = (info: {
     status: string;
@@ -175,7 +175,7 @@ async function summarizeWithXenova(
     const base = 45 + Math.round((i / Math.max(chunks.length, 1)) * 45);
     onProgress?.(
       base,
-      `Summarizing chunk ${i + 1}/${chunks.length} (DistilBART)…`
+      `Summarizing chunk ${i + 1}/${chunks.length}…`
     );
     const out = await summarizer(chunks[i], {
       max_new_tokens: 120,
@@ -266,7 +266,7 @@ export async function summarizeOnDevice(
   }
 
   if (heuristicOnly) {
-    onProgress?.(100, "Heuristic outline only");
+    onProgress?.(100, "Outline ready");
     return {
       summary: "",
       chunks: 0,
@@ -276,13 +276,13 @@ export async function summarizeOnDevice(
   }
 
   // 1. Browser Summarizer API
-  onProgress?.(4, "Checking Browser Summarizer API…");
+  onProgress?.(4, "Checking summary options…");
   const browser = await summarizeWithBrowserApi(cleaned, signal, onProgress);
   if (browser?.summary) {
     return {
       summary: browser.summary,
       chunks: browser.chunks,
-      modelId: "Browser Summarizer API",
+      modelId: "browser-summarizer",
       method: "browser-summarizer",
     };
   }
@@ -297,7 +297,7 @@ export async function summarizeOnDevice(
   }
 
   // 3. No download — caller should show localOutline
-  onProgress?.(100, "No browser summarizer — use heuristic outline");
+  onProgress?.(100, "Outline ready");
   return {
     summary: "",
     chunks: 0,
@@ -314,7 +314,7 @@ export async function probeSummarizeEngine(): Promise<{
   return {
     browserSummarizer,
     label: browserSummarizer
-      ? "Uses your browser’s built-in Summarizer API"
-      : "Rules / heuristic outline (no browser summarizer)",
+      ? "Private · on your device"
+      : "Private · on your device",
   };
 }

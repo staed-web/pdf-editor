@@ -119,7 +119,7 @@ export async function createLanguageModelSession(opts: {
   if (!isUsable(avail)) return null;
 
   try {
-    opts.onProgress?.(10, "Starting browser built-in AI…");
+    opts.onProgress?.(10, "Starting on-device answer…");
     const createOpts: Record<string, unknown> = {
       ...LM_DEFAULT_OPTS,
       signal: opts.signal,
@@ -130,7 +130,7 @@ export async function createLanguageModelSession(opts: {
             const pct = Math.min(40, Math.round(ev.loaded * 40));
             opts.onProgress?.(
               pct,
-              `Downloading browser AI model… ${Math.round(ev.loaded * 100)}%`
+              `Preparing on-device answer… ${Math.round(ev.loaded * 100)}%`
             );
           }
         }) as EventListener);
@@ -214,7 +214,7 @@ export async function createBrowserSummarizer(opts: {
   if (!isUsable(avail)) return null;
 
   try {
-    opts.onProgress?.(8, "Starting Browser Summarizer API…");
+    opts.onProgress?.(8, "Starting summary…");
     const summarizer = await ctor.create({
       ...options,
       signal: opts.signal,

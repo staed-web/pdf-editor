@@ -204,7 +204,7 @@ export default function RedactPage() {
             <div className="space-y-2 rounded-xl border border-[var(--hairline)] p-3">
               <div className="flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-amber-600" />
-                <Label className="text-sm">Rules / heuristic patterns</Label>
+                <Label className="text-sm">Common sensitive patterns</Label>
               </div>
               <p className="text-[11px] text-[var(--muted)]">
                 Regex / rules finders (not AI) for emails, phones, Aadhaar-like 12-digit

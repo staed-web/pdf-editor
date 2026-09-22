@@ -43,7 +43,7 @@ export const STEP_KIND_META: Record<
 > = {
   ocr: {
     label: "OCR (searchable)",
-    hint: "Tesseract in-browser — slow on long scans",
+    hint: "On your device — slow on long scans",
   },
   compress: {
     label: "Compress",

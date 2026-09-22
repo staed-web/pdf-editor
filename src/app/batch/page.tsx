@@ -65,7 +65,7 @@ const OPS: {
   needsText?: boolean;
 }[] = [
   { id: "compress", label: "Compress", hint: "Downsample pages (medium quality)" },
-  { id: "ocr", label: "OCR (searchable)", hint: "Slow — Tesseract in-browser" },
+  { id: "ocr", label: "OCR (searchable)", hint: "Slow — runs on your device" },
   { id: "pdf-to-jpg", label: "PDF → JPG", hint: "One ZIP of images per file" },
   { id: "unlock", label: "Unlock", hint: "Same password for all files", needsPassword: true },
   { id: "watermark", label: "Watermark", hint: "Same text on every file", needsText: true },
