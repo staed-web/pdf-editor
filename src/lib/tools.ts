@@ -1043,6 +1043,24 @@ export function featuredTools() {
   return TOOLS.filter((t) => t.featured);
 }
 
+/** Homepage spotlight: Batch + top 8 everyday tools. Full catalog stays on /tools. */
+export function homeSpotlightTools() {
+  const order = [
+    "batch",
+    "merge",
+    "split",
+    "compress",
+    "edit",
+    "jpg-to-pdf",
+    "pdf-to-jpg",
+    "sign",
+    "protect",
+  ];
+  const bySlug = new Map(TOOLS.map((x) => [x.slug, x]));
+  return order.map((s) => bySlug.get(s)).filter(Boolean) as typeof TOOLS;
+}
+
+
 export function relatedTools(slug: string, limit = 4) {
   const tool = getTool(slug);
   if (!tool) return TOOLS.filter((t) => t.slug !== slug).slice(0, limit);

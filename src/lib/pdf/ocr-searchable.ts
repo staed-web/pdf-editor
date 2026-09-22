@@ -12,6 +12,46 @@ async function loadTesseract() {
   return mod.createWorker;
 }
 
+
+function langNeedsUnicodeFont(lang: string): boolean {
+  return /(^|\+)hin(\+|$)/i.test(lang);
+}
+
+let unicodeFontBytesPromise: Promise<ArrayBuffer> | null = null;
+
+async function loadDevanagariFontBytes(): Promise<ArrayBuffer> {
+  if (!unicodeFontBytesPromise) {
+    unicodeFontBytesPromise = fetch("/fonts/NotoSansDevanagari-Regular.ttf").then(
+      async (res) => {
+        if (!res.ok) {
+          unicodeFontBytesPromise = null;
+          throw new Error("Could not load Devanagari font for searchable OCR");
+        }
+        return res.arrayBuffer();
+      }
+    );
+  }
+  return unicodeFontBytesPromise;
+}
+
+async function embedOcrFont(
+  out: PDFDocument,
+  lang: string,
+  onProgress?: OcrProgress
+) {
+  if (!langNeedsUnicodeFont(lang)) {
+    return out.embedFont(StandardFonts.Helvetica);
+  }
+  onProgress?.(6, "Loading Hindi font…");
+  const fontkitMod = await import("@pdf-lib/fontkit");
+  // CJS/ESM interop — pdf-lib expects the fontkit namespace (has create())
+  const fk = ((fontkitMod as unknown as { default?: unknown }).default ??
+    fontkitMod) as Parameters<PDFDocument["registerFontkit"]>[0];
+  out.registerFontkit(fk);
+  const bytes = await loadDevanagariFontBytes();
+  return out.embedFont(bytes, { subset: true });
+}
+
 export async function ocrToSearchablePdf(
   source: ArrayBuffer,
   opts: { lang?: string; onProgress?: OcrProgress } = {}
@@ -33,7 +73,7 @@ export async function ocrToSearchablePdf(
   });
 
   const out = await PDFDocument.create();
-  const font = await out.embedFont(StandardFonts.Helvetica);
+  const font = await embedOcrFont(out, lang, opts.onProgress);
   const textChunks: string[] = [];
 
   for (let i = 0; i < pages.length; i++) {
@@ -77,7 +117,7 @@ export async function ocrToSearchablePdf(
       const yTop = box.y0 * scale;
       const y = pageH - yTop - h;
       let size = Math.min(h * 0.9, 28);
-      // Fit width — Helvetica only encodes WinAnsi; non-Latin glyphs are skipped
+      // Fit width; Unicode font used when lang includes Hindi (hin)
       try {
         while (size > 4 && font.widthOfTextAtSize(text, size) > w * 1.15) {
           size -= 0.5;
@@ -91,7 +131,7 @@ export async function ocrToSearchablePdf(
           opacity: 0, // invisible but selectable/searchable
         });
       } catch {
-        /* skip glyphs Helvetica can't encode (e.g. Devanagari) */
+        /* skip rare glyphs the active font still can't encode */
       }
     }
   }

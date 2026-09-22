@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useStandalone } from "@/hooks/useStandalone";
 import { AdBanner } from "@/components/ads/AdBanner";
 import {
-  featuredTools,
+  homeSpotlightTools,
   TOOLS,
   CATEGORY_ORDER,
   CATEGORY_LABELS,
@@ -62,7 +62,7 @@ export default function HomePageClient() {
 }
 
 function WebHome() {
-  const featured = featuredTools();
+  const featured = homeSpotlightTools();
 
   return (
     <>
@@ -118,10 +118,10 @@ function WebHome() {
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Featured tools
+              Batch & top tools
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Start with the essentials — or jump into the full editor.
+              Batch workspace plus the eight tools most people need — everything else lives on the tools hub.
             </p>
           </div>
           <Link

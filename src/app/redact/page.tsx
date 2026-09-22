@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   FileSummary,
   ProcessProgress,
   ProcessError,
@@ -45,6 +53,7 @@ export default function RedactPage() {
     null
   );
   const [hardWipe, setHardWipe] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const job = useProcessJob();
 
   const pages = summary?.pageCount ?? 0;
@@ -109,9 +118,10 @@ export default function RedactPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Coords are top-left page points. Hard wipe re-renders pages with
-              black boxes burned in so underlying text/images in those regions
-              are removed (best-effort, not cryptographic).
+              Coords are top-left page points. Prefer hard wipe for sensitive
+              data — it burns regions into the page so underlying text is
+              destroyed, not merely covered by a black box (best-effort, not
+              cryptographic).
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="wipe">Hard wipe (rasterize)</Label>
@@ -179,10 +189,44 @@ export default function RedactPage() {
             <Button
               className="w-full"
               disabled={!file || job.busy || !regions.length}
-              onClick={run}
+              onClick={() => {
+                if (hardWipe) setConfirmOpen(true);
+                else void run();
+              }}
             >
               {job.busy ? "Working…" : "Apply redactions"}
             </Button>
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <strong>Verify redaction:</strong> after download, open the PDF and
+              try selecting or searching the covered text. With hard wipe it
+              should be gone — a black box alone is not enough for sensitive data.
+            </div>
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Permanently remove content?</DialogTitle>
+                  <DialogDescription>
+                    Hard wipe burns black regions into the page image and destroys
+                    the underlying text/images in those areas (best-effort raster
+                    wipe — not cryptographic sanitization). Soft black boxes leave
+                    text selectable underneath.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setConfirmOpen(false);
+                      void run();
+                    }}
+                  >
+                    Yes, hard wipe permanently
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button asChild variant="secondary" className="w-full">
               <a href="/edit">Open full editor</a>
             </Button>

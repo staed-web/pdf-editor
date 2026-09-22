@@ -34,6 +34,7 @@ import {
   classifyProcessError,
   suggestedName,
 } from "@/lib/pdf/process-ux";
+import { DEFAULT_OCR_LANG, OCR_LANGS } from "@/lib/pdf/ocr-langs";
 
 const tool = getTool("batch")!;
 
@@ -76,6 +77,7 @@ export default function BatchPage() {
   const [op, setOp] = useState<BatchOp>("compress");
   const [password, setPassword] = useState("");
   const [wmText, setWmText] = useState("CONFIDENTIAL");
+  const [ocrLang, setOcrLang] = useState(DEFAULT_OCR_LANG);
   const [items, setItems] = useState<Record<string, BatchItem>>({});
   const [busy, setBusy] = useState(false);
   const [overall, setOverall] = useState(0);
@@ -131,7 +133,7 @@ export default function BatchPage() {
       }
       case "ocr": {
         const { ocrToSearchablePdf } = await import("@/lib/pdf/ocr-searchable");
-        const out = await ocrToSearchablePdf(buf);
+        const out = await ocrToSearchablePdf(buf, { lang: ocrLang });
         return [{ name: suggestedName(file.name, "ocr"), data: out.bytes }];
       }
       case "pdf-to-jpg": {
@@ -321,7 +323,43 @@ export default function BatchPage() {
                 />
               </div>
             )}
-            <SoftLimitsNote kind="batch" />
+                        {op === "ocr" && (
+              <div className="space-y-2">
+                <Label>OCR language</Label>
+                <div className="flex flex-wrap gap-2">
+                  {OCR_LANGS.filter((l) => l.prominent).map((l) => (
+                    <Button
+                      key={l.id}
+                      type="button"
+                      size="sm"
+                      variant={ocrLang === l.id ? "default" : "outline"}
+                      className="rounded-full"
+                      disabled={busy}
+                      onClick={() => setOcrLang(l.id)}
+                    >
+                      {l.label}
+                    </Button>
+                  ))}
+                </div>
+                <select
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                  value={OCR_LANGS.some((m) => !m.prominent && m.id === ocrLang) ? ocrLang : ""}
+                  onChange={(e) => {
+                    if (e.target.value) setOcrLang(e.target.value);
+                  }}
+                  disabled={busy}
+                  aria-label="More OCR languages"
+                >
+                  <option value="">More languages…</option>
+                  {OCR_LANGS.filter((l) => !l.prominent).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+<SoftLimitsNote kind="batch" />
             <Button
               className="w-full"
               disabled={!files.length || busy}

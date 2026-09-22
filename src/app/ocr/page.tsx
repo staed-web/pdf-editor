@@ -126,8 +126,9 @@ export default function OcrPage() {
             <p className="text-xs text-zinc-500">
               Runs Tesseract.js in your browser (loaded only when you OCR).
               Searchable mode embeds page images plus an invisible text layer
-              from word boxes. Hindi/Devanagari appears in the text preview;
-              Latin text is embedded for PDF search.
+              from word boxes. Hindi (hin / eng+hin) lazy-loads a Devanagari
+              font so Devanagari glyphs are actually searchable in the PDF —
+              not image-only.
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="searchable">Searchable PDF output</Label>

@@ -50,18 +50,39 @@ export function suggestedName(original: string, suffix: string, ext = "pdf") {
   return `${base}-${suffix}.${cleanExt}`;
 }
 
+/** True on phones / coarse pointers — lower memory budget. */
+export function isCoarsePointer(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.innerWidth < 768
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function memoryWarning(size: number, pageCount: number | null): string | null {
-  if (size >= SOFT_LIMITS.fileBytesSoftMax) {
-    return `This file is ${formatBytes(size)} — very large for in-browser processing. Close other tabs or try a smaller file if the tab freezes.`;
+  const mobile = isCoarsePointer();
+  const bytesWarn = mobile ? 8 * 1024 * 1024 : SOFT_LIMITS.fileBytesWarn;
+  const bytesMax = mobile ? 32 * 1024 * 1024 : SOFT_LIMITS.fileBytesSoftMax;
+  const pagesWarn = mobile ? 20 : SOFT_LIMITS.pagesWarn;
+  const pagesMax = mobile ? 80 : SOFT_LIMITS.pagesSoftMax;
+  const phoneNote = mobile
+    ? " On a phone this can freeze the tab — Wi-Fi + a smaller file (or split first) is safer."
+    : "";
+  if (size >= bytesMax) {
+    return `This file is ${formatBytes(size)} — very large for in-browser processing. Close other tabs or try a smaller file if the tab freezes.${phoneNote}`;
   }
-  if (size >= SOFT_LIMITS.fileBytesWarn) {
-    return `Large file (${formatBytes(size)}). Processing stays on your device and may use significant memory.`;
+  if (size >= bytesWarn) {
+    return `Large file (${formatBytes(size)}). Processing stays on your device and may use significant memory.${phoneNote}`;
   }
-  if (pageCount != null && pageCount >= SOFT_LIMITS.pagesSoftMax) {
-    return `${pageCount} pages is a lot for the browser. Consider splitting first for smoother results.`;
+  if (pageCount != null && pageCount >= pagesMax) {
+    return `${pageCount} pages is a lot for the browser. Consider splitting first for smoother results.${phoneNote}`;
   }
-  if (pageCount != null && pageCount >= SOFT_LIMITS.pagesWarn) {
-    return `${pageCount} pages — expect longer processing and higher memory use.`;
+  if (pageCount != null && pageCount >= pagesWarn) {
+    return `${pageCount} pages — expect longer processing and higher memory use.${phoneNote}`;
   }
   return null;
 }
@@ -229,5 +250,10 @@ export function softLimitsCopy(kind: "tool" | "batch" = "tool"): string {
   if (kind === "batch") {
     return `Soft limits for browser stability: up to ${SOFT_LIMITS.batchMaxFiles} files · ~${SOFT_LIMITS.batchMaxTotalBytes / (1024 * 1024)} MB total · prefer ≤${SOFT_LIMITS.batchPagesWarn} pages per file. Everything stays on your device.`;
   }
-  return `Soft limits for browser stability: prefer under ${SOFT_LIMITS.fileBytesWarn / (1024 * 1024)} MB and ~${SOFT_LIMITS.pagesWarn} pages (harder past ~${SOFT_LIMITS.fileBytesSoftMax / (1024 * 1024)} MB / ${SOFT_LIMITS.pagesSoftMax} pages). 100% local — nothing uploaded.`;
+  const mobile = isCoarsePointer();
+  const base = `Soft limits for browser stability: prefer under ${SOFT_LIMITS.fileBytesWarn / (1024 * 1024)} MB and ~${SOFT_LIMITS.pagesWarn} pages (harder past ~${SOFT_LIMITS.fileBytesSoftMax / (1024 * 1024)} MB / ${SOFT_LIMITS.pagesSoftMax} pages). 100% local — nothing uploaded.`;
+  if (mobile) {
+    return `${base} On phones, stay under ~8 MB / ~20 pages when possible.`;
+  }
+  return base;
 }

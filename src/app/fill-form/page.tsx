@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getTool } from "@/lib/tools";
-import { listFormFields } from "@/lib/pdf/export";
-import { PDFDocument } from "pdf-lib";
 import { downloadBytes, isPdfFile } from "@/lib/download";
+import { storeHandoff } from "@/lib/storage/handoff";
+import { useRouter } from "next/navigation";
 
 const tool = getTool("fill-form")!;
 
 export default function FillFormPage() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [fields, setFields] = useState<{name:string;value:string;type:string}[]>([]);
   const [result, setResult] = useState<Uint8Array | null>(null);
@@ -29,6 +30,7 @@ export default function FillFormPage() {
     setFile(f); setResult(null);
     const ab = await f.arrayBuffer();
     setBuf(ab);
+    const { listFormFields } = await import("@/lib/pdf/export");
     const list = await listFormFields(ab);
     setFields(list.map((x)=>({ name:x.name, value:x.value, type:x.type })));
     if (!list.length) toast.message("No AcroForm fields detected — try the full editor");
@@ -38,6 +40,7 @@ export default function FillFormPage() {
     if (!buf) return;
     setBusy(true);
     try {
+      const { PDFDocument } = await import("pdf-lib");
       const doc = await PDFDocument.load(buf.slice(0), { ignoreEncryption: true });
       const form = doc.getForm();
       for (const f of fields) {
@@ -62,12 +65,32 @@ export default function FillFormPage() {
     } finally { setBusy(false); }
   };
 
+  const flattenNext = async () => {
+    if (!result) return;
+    await storeHandoff({
+      data: result,
+      name: "filled-form.pdf",
+      fromTool: "fill-form",
+      toHref: "/flatten",
+      intent: "open",
+    });
+    router.push("/flatten");
+  };
+
   return (
     <MarketingShell>
       <ToolShell tool={tool} options={
         <>
+          <p className="text-xs text-zinc-500">
+            Contract path: fill → flatten → download. After saving, hand off to
+            Flatten (or Sign) so fields can&apos;t be changed.
+          </p>
           <Button className="w-full" disabled={!fields.length||busy} onClick={run}>{busy?"Saving…":"Save filled PDF"}</Button>
+          <Button className="w-full" variant="secondary" disabled={!result||busy} onClick={() => void flattenNext()}>
+            Flatten &amp; download next
+          </Button>
           <Button asChild variant="outline" className="w-full"><Link href="/edit">Open in editor</Link></Button>
+          <Button asChild variant="outline" className="w-full"><Link href="/sign">Then sign</Link></Button>
         </>
       }>
         <DropZone accept="application/pdf" onFiles={onFiles} label={file?file.name:"Drop a fillable PDF"} />

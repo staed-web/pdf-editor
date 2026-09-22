@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { featuredTools, TOOLS } from "@/lib/tools";
+import { homeSpotlightTools, TOOLS } from "@/lib/tools";
 import { listRecentFiles } from "@/lib/storage/recent";
 import type { RecentFileMeta } from "@/store/types";
 import { haptic } from "@/hooks/useHaptic";
@@ -35,7 +35,7 @@ function greeting(): string {
 
 /** Installed-PWA app home — large title, bento tools, editor CTA. */
 export function MobileHome() {
-  const featured = useMemo(() => featuredTools().slice(0, 6), []);
+  const featured = useMemo(() => homeSpotlightTools().slice(0, 9), []);
   const [recent, setRecent] = useState<RecentFileMeta[]>([]);
   const [q, setQ] = useState("");
 

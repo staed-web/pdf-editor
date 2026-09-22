@@ -19,7 +19,6 @@ import {
 import { getTool } from "@/lib/tools";
 import { useToolFiles } from "@/hooks/useToolFiles";
 import { useProcessJob } from "@/hooks/useProcessJob";
-import { mergePdfFiles } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 import {
   SOFT_LIMITS,
@@ -31,8 +30,13 @@ import { formatBytes } from "@/lib/utils";
 
 const tool = getTool("merge")!;
 
+function rid() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `f-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function MergePage() {
-  const { files, addFiles, remove, reorder, clear } = useToolFiles();
+  const { files, remove, reorder, clear, setFiles } = useToolFiles();
   const [result, setResult] = useState<Uint8Array | null>(null);
   const [resultName, setResultName] = useState("merged.pdf");
   const [bookmarks, setBookmarks] = useState(true);
@@ -42,9 +46,16 @@ export default function MergePage() {
     () => files.reduce((a, f) => a + f.size, 0),
     [files]
   );
+  const knownPages = useMemo(() => {
+    const nums = files
+      .map((f) => f.pageCount)
+      .filter((n): n is number => typeof n === "number");
+    return nums.length ? nums.reduce((a, b) => a + b, 0) : null;
+  }, [files]);
+
   const warnings = useMemo(() => {
     const w: string[] = [];
-    const mem = memoryWarning(totalBytes, null);
+    const mem = memoryWarning(totalBytes, knownPages);
     if (mem) w.push(mem);
     if (files.length > SOFT_LIMITS.batchMaxFiles) {
       w.push(
@@ -52,12 +63,44 @@ export default function MergePage() {
       );
     }
     return w;
-  }, [files.length, totalBytes]);
+  }, [files.length, totalBytes, knownPages]);
 
   const resetAll = () => {
     clear();
     setResult(null);
     job.resetError();
+  };
+
+  const onAdd = (incoming: File[]) => {
+    const pdfs = incoming.filter(isPdfFile);
+    if (pdfs.length !== incoming.length) toast.error("Only PDF files accepted");
+    if (!pdfs.length) return;
+    setResult(null);
+    job.resetError();
+    const stamped = pdfs.map((file) => ({
+      id: rid(),
+      file,
+      name: file.name,
+      size: file.size,
+      pageCount: undefined as number | null | undefined,
+    }));
+    setFiles((prev) => [...prev, ...stamped]);
+    void (async () => {
+      const { loadPdf } = await import("@/lib/pdf/ops");
+      for (const item of stamped) {
+        try {
+          const doc = await loadPdf(await item.file.arrayBuffer());
+          const pageCount = doc.getPageCount();
+          setFiles((prev) =>
+            prev.map((f) => (f.id === item.id ? { ...f, pageCount } : f))
+          );
+        } catch {
+          setFiles((prev) =>
+            prev.map((f) => (f.id === item.id ? { ...f, pageCount: null } : f))
+          );
+        }
+      }
+    })();
   };
 
   const run = async () => {
@@ -67,6 +110,7 @@ export default function MergePage() {
       );
       return;
     }
+    const { mergePdfFiles } = await import("@/lib/pdf/ops");
     const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
       setLabel("Reading PDFs…");
       const buffers = [];
@@ -103,7 +147,11 @@ export default function MergePage() {
           <>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="bm">Bookmarks from filenames</Label>
-              <Switch id="bm" checked={bookmarks} onCheckedChange={setBookmarks} />
+              <Switch
+                id="bm"
+                checked={bookmarks}
+                onCheckedChange={setBookmarks}
+              />
             </div>
             <SoftLimitsNote />
           </>
@@ -112,15 +160,9 @@ export default function MergePage() {
         <DropZone
           accept="application/pdf"
           multiple
-          onFiles={(f) => {
-            const pdfs = f.filter(isPdfFile);
-            if (pdfs.length !== f.length) toast.error("Only PDF files accepted");
-            addFiles(pdfs);
-            setResult(null);
-            job.resetError();
-          }}
+          onFiles={onAdd}
           label="Drop PDFs to merge"
-          hint="Reorder below, then merge"
+          hint="Drag the handle to reorder · page badges load automatically"
         />
         <FileQueue files={files} onRemove={remove} onReorder={reorder} />
         {files.length > 0 && (

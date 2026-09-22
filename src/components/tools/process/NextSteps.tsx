@@ -8,6 +8,7 @@ import {
   PenTool,
   ScanText,
   Combine,
+  Layers,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export type NextStepAction = {
   label: string;
   href: string;
   intent?: HandoffIntent;
-  icon?: "compress" | "protect" | "sign" | "ocr" | "merge" | "other";
+  icon?: "compress" | "protect" | "sign" | "ocr" | "merge" | "flatten" | "other";
 };
 
 const ICONS = {
@@ -33,6 +34,7 @@ const ICONS = {
   sign: PenTool,
   ocr: ScanText,
   merge: Combine,
+  flatten: Layers,
   other: ArrowRight,
 } as const;
 
@@ -64,6 +66,12 @@ export function defaultNextSteps(fromTool: string): NextStepAction[] {
       href: "/ocr",
       icon: "ocr",
     },
+    flatten: {
+      id: "flatten",
+      label: "Flatten & lock",
+      href: "/flatten",
+      icon: "flatten",
+    },
   };
 
   const presets: Record<string, string[]> = {
@@ -74,6 +82,9 @@ export function defaultNextSteps(fromTool: string): NextStepAction[] {
     redact: ["compress", "protect", "sign"],
     "jpg-to-pdf": ["compress", "protect", "sign"],
     split: ["compress", "protect"],
+    "fill-form": ["flatten", "sign", "protect"],
+    sign: ["flatten", "protect"],
+    flatten: ["protect", "sign"],
     "pdf-to-word": [],
     "pdf-to-jpg": [],
   };
