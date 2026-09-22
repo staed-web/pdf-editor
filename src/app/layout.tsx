@@ -58,6 +58,9 @@ export const metadata: Metadata = {
     title: "InstantPDFEdit",
     description: "Every PDF tool. Instantly. Private & in-browser.",
   },
+  verification: {
+    google: "8fJth-0Zy8nPtsiYpPmAZGN34L-GEP9oGXLAyWLi2P4",
+  },
   other: {
     "mobile-web-app-capable": "yes",
     "google-adsense-account": "ca-pub-9372118866074955",
