@@ -330,16 +330,18 @@ export function TopToolbar() {
                   {searchIndex + 1}/{searchMatches.length}
                 </span>
               )}
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={prevMatch}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Previous match" title="Previous match" onClick={prevMatch}>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={nextMatch}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Next match" title="Next match" onClick={nextMatch}>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                aria-label="Close search"
+                title="Close search"
                 onClick={() => {
                   setSearchOpen(false);
                   setSearch("", []);
@@ -382,7 +384,17 @@ function ToolBtn({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-[var(--muted)] hover:text-foreground", className)} {...props}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={tip}
+          title={tip}
+          className={cn(
+            "h-8 w-8 text-[var(--muted)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-amber-500/60",
+            className
+          )}
+          {...props}
+        >
           {children}
         </Button>
       </TooltipTrigger>

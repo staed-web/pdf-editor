@@ -19,7 +19,7 @@ export default function SplitPage() {
   const [file, setFile] = useState<File | null>(null);
   const [pages, setPages] = useState(0);
   const [mode, setMode] = useState<"ranges" | "every">("ranges");
-  const [ranges, setRanges] = useState("1-1");
+  const [ranges, setRanges] = useState("");
   const [busy, setBusy] = useState(false);
   const [zipReady, setZipReady] = useState<{ name: string; data: Uint8Array }[] | null>(null);
 
@@ -81,7 +81,7 @@ export default function SplitPage() {
             {mode === "ranges" && (
               <div className="space-y-2">
                 <Label htmlFor="ranges">Page ranges</Label>
-                <Input id="ranges" value={ranges} onChange={(e) => setRanges(e.target.value)} placeholder="1-3,5,7-9" />
+                <Input id="ranges" value={ranges} onChange={(e) => setRanges(e.target.value)} placeholder="1-3, 5" />
                 <p className="text-[11px] text-zinc-500">{pages ? `Document has ${pages} pages` : "Load a PDF first"}</p>
               </div>
             )}

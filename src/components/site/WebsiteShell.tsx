@@ -7,7 +7,6 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
-import { InstallButton } from "@/components/pwa/InstallButton";
 
 /**
  * Classic responsive website chrome — used in normal browser (including
@@ -20,12 +19,9 @@ export function WebsiteShell({ children }: { children: ReactNode }) {
         <SiteHeader />
         <OfflineIndicator />
         <main className="flex-1">{children}</main>
-        <SiteFooter />
-        {/* Subtle install CTA — does not replace layout */}
+        {/* In-flow install prompt (website mode) — does not cover tool cards */}
         <InstallBanner website />
-        <div className="fixed bottom-6 right-6 z-40 hidden sm:block">
-          <InstallButton label="Install app" />
-        </div>
+        <SiteFooter />
         <Toaster position="bottom-center" richColors closeButton />
       </div>
     </ThemeProvider>

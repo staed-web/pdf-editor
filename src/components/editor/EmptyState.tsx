@@ -120,7 +120,7 @@ export function EmptyState() {
                 }
               }}
             >
-              Try sample PDF
+              Create and open sample
             </Button>
           </div>
         </div>

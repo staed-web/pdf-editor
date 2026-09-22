@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 const APP_NAME = "InstantPDFEdit";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://instantpdfedit.com"),
   title: {
     default: "InstantPDFEdit — Every PDF tool. Instantly.",
     template: "%s · InstantPDFEdit",

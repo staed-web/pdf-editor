@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStandalone } from "@/hooks/useStandalone";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,10 @@ declare global {
   }
 }
 
+/**
+ * Sponsored slot that collapses until AdSense fills.
+ * Missing env slot → render nothing (no empty Sponsored chrome).
+ */
 export function AdBanner({
   variant = "leaderboard",
   className,
@@ -54,6 +58,9 @@ export function AdBanner({
 }) {
   const standalone = useStandalone();
   const pushed = useRef(false);
+  const insRef = useRef<HTMLModElement>(null);
+  const [filled, setFilled] = useState(false);
+  const [giveUp, setGiveUp] = useState(false);
 
   const resolvedSlot = (slot ?? SLOT_ENV[variant] ?? "").trim();
   const hasSlot = resolvedSlot.length > 0;
@@ -65,20 +72,72 @@ export function AdBanner({
       (window.adsbygoogle = window.adsbygoogle || []).push({});
       pushed.current = true;
     } catch {
-      // AdSense may throw if script not ready; frame still reserves space.
+      // Script may not be ready yet.
     }
   }, [standalone, hasSlot, resolvedSlot]);
 
-  if (standalone) return null;
+  useEffect(() => {
+    if (standalone || !hasSlot) return;
+    const el = insRef.current;
+    if (!el) return;
+
+    const check = () => {
+      const status = el.getAttribute("data-ad-status");
+      if (status === "filled") {
+        setFilled(true);
+        return true;
+      }
+      if (status === "unfilled") {
+        setGiveUp(true);
+        return true;
+      }
+      const iframe = el.querySelector("iframe");
+      if (iframe) {
+        const h =
+          iframe.clientHeight || Number(iframe.getAttribute("height")) || 0;
+        if (h > 20) {
+          setFilled(true);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (check()) return;
+
+    const mo = new MutationObserver(() => {
+      check();
+    });
+    mo.observe(el, {
+      attributes: true,
+      attributeFilter: ["data-ad-status"],
+      childList: true,
+      subtree: true,
+    });
+
+    const t = window.setTimeout(() => {
+      if (!check()) setGiveUp(true);
+    }, 4000);
+
+    return () => {
+      mo.disconnect();
+      window.clearTimeout(t);
+    };
+  }, [standalone, hasSlot, resolvedSlot]);
+
+  if (standalone || !hasSlot || giveUp) return null;
 
   return (
     <aside
       className={cn(
-        "mx-auto w-full",
+        "mx-auto w-full transition-[max-height,opacity,margin] duration-300",
         styles.maxW,
+        !filled && "pointer-events-none max-h-0 overflow-hidden opacity-0 !m-0 !p-0",
+        filled && "opacity-100",
         className
       )}
       aria-label="Sponsored"
+      aria-hidden={!filled}
     >
       <div
         className={cn(
@@ -93,21 +152,18 @@ export function AdBanner({
         <div
           className={cn(
             "relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-[var(--panel)]/60 dark:bg-[var(--card)]/40",
-            styles.minH
+            filled && styles.minH
           )}
         >
-          {hasSlot ? (
-            <ins
-              className="adsbygoogle"
-              style={{ display: "block", width: "100%", minHeight: "inherit" }}
-              data-ad-client={ADSENSE_CLIENT}
-              data-ad-slot={resolvedSlot}
-              data-ad-format="auto"
-              data-full-width-responsive="true"
-            />
-          ) : (
-            <span className="sr-only">Advertisement placeholder</span>
-          )}
+          <ins
+            ref={insRef}
+            className="adsbygoogle"
+            style={{ display: "block", width: "100%" }}
+            data-ad-client={ADSENSE_CLIENT}
+            data-ad-slot={resolvedSlot}
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
         </div>
       </div>
     </aside>
