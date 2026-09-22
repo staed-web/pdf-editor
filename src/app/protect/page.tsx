@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -17,6 +17,7 @@ import {
 } from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
 import { useProcessJob } from "@/hooks/useProcessJob";
+import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { protectPdf } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 import {
@@ -36,14 +37,21 @@ export default function ProtectPage() {
   const [result, setResult] = useState<{ bytes: Uint8Array; name: string } | null>(null);
   const job = useProcessJob();
 
-  const onFiles = async (fs: File[]) => {
-    const f = fs.find(isPdfFile);
-    if (!f) return toast.error("PDF only");
-    setFile(f);
-    setResult(null);
-    job.resetError();
-    setSummary(await inspectPdfFile(f));
-  };
+  const onFiles = useCallback(
+    async (fs: File[]) => {
+      const f = fs.find(isPdfFile);
+      if (!f) return toast.error("PDF only");
+      setFile(f);
+      setResult(null);
+      job.resetError();
+      setSummary(await inspectPdfFile(f));
+    },
+    [job.resetError]
+  );
+
+  useHandoffIntake("/protect", async (f) => {
+    await onFiles([f]);
+  });
 
   const resetAll = () => {
     setFile(null);
@@ -130,6 +138,7 @@ export default function ProtectPage() {
             fileName={result.name}
             size={result.bytes.byteLength}
             blob={result.bytes}
+            fromTool="protect"
             onDownload={() => downloadBytes(result.bytes, result.name)}
             onProcessAnother={resetAll}
           />

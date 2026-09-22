@@ -148,6 +148,7 @@ export default function Page() {
             fileName={result.name}
             size={result.bytes.byteLength}
             blob={result.bytes}
+            fromTool="jpg-to-pdf"
             onDownload={() => downloadBytes(result.bytes, result.name)}
             onProcessAnother={resetAll}
           />

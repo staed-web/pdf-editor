@@ -1,23 +1,33 @@
 /**
  * OCR pages and write an invisible text layer into a new PDF (searchable scan).
+ * Tesseract.js is loaded dynamically so non-OCR routes stay lean.
  */
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { createWorker } from "tesseract.js";
 import { renderPdfPages } from "./ops";
 
 export type OcrProgress = (pct: number, label?: string) => void;
+
+async function loadTesseract() {
+  const mod = await import("tesseract.js");
+  return mod.createWorker;
+}
 
 export async function ocrToSearchablePdf(
   source: ArrayBuffer,
   opts: { lang?: string; onProgress?: OcrProgress } = {}
 ): Promise<{ bytes: Uint8Array; text: string }> {
   const lang = opts.lang || "eng";
+  opts.onProgress?.(3, "Loading OCR engine…");
+  const createWorker = await loadTesseract();
   opts.onProgress?.(5, "Rendering pages");
   const pages = await renderPdfPages(source, { format: "png", scale: 2 });
   const worker = await createWorker(lang, 1, {
     logger: (m) => {
       if (m.status === "recognizing text" && typeof m.progress === "number") {
         opts.onProgress?.(10 + Math.round(m.progress * 70), "Recognizing");
+      }
+      if (m.status === "loading language traineddata") {
+        opts.onProgress?.(8, "Downloading language data…");
       }
     },
   });
@@ -43,7 +53,10 @@ export async function ocrToSearchablePdf(
     page.drawImage(img, { x: 0, y: 0, width: pageW, height: pageH });
 
     // Invisible text from word boxes (tesseract bbox: x0,y0,x1,y1 in image px)
-    const words: { text: string; bbox: { x0: number; y0: number; x1: number; y1: number } }[] = [];
+    const words: {
+      text: string;
+      bbox: { x0: number; y0: number; x1: number; y1: number };
+    }[] = [];
     for (const block of data.blocks || []) {
       for (const para of block.paragraphs || []) {
         for (const line of para.lines || []) {
@@ -64,11 +77,11 @@ export async function ocrToSearchablePdf(
       const yTop = box.y0 * scale;
       const y = pageH - yTop - h;
       let size = Math.min(h * 0.9, 28);
-      // Fit width
-      while (size > 4 && font.widthOfTextAtSize(text, size) > w * 1.15) {
-        size -= 0.5;
-      }
+      // Fit width — Helvetica only encodes WinAnsi; non-Latin glyphs are skipped
       try {
+        while (size > 4 && font.widthOfTextAtSize(text, size) > w * 1.15) {
+          size -= 0.5;
+        }
         page.drawText(text, {
           x,
           y: y + h * 0.1,
@@ -78,7 +91,7 @@ export async function ocrToSearchablePdf(
           opacity: 0, // invisible but selectable/searchable
         });
       } catch {
-        /* skip glyphs Helvetica can't encode */
+        /* skip glyphs Helvetica can't encode (e.g. Devanagari) */
       }
     }
   }
@@ -87,4 +100,41 @@ export async function ocrToSearchablePdf(
   opts.onProgress?.(100, "Done");
   const bytes = await out.save({ useObjectStreams: true });
   return { bytes, text: textChunks.join("\n\n") };
+}
+
+/** Plain-text OCR without building a PDF (lazy Tesseract). */
+export async function ocrPagesToText(
+  source: ArrayBuffer,
+  opts: { lang?: string; onProgress?: OcrProgress; isCancelled?: () => boolean } = {}
+): Promise<string> {
+  const lang = opts.lang || "eng";
+  opts.onProgress?.(3, "Loading OCR engine…");
+  const createWorker = await loadTesseract();
+  opts.onProgress?.(5, "Rendering pages");
+  const pages = await renderPdfPages(source, { format: "png", scale: 2 });
+  if (opts.isCancelled?.()) throw new DOMException("Aborted", "AbortError");
+  const worker = await createWorker(lang, 1, {
+    logger: (m) => {
+      if (m.status === "recognizing text" && typeof m.progress === "number") {
+        if (!opts.isCancelled?.()) {
+          opts.onProgress?.(10 + Math.round(m.progress * 80), "Recognizing");
+        }
+      }
+    },
+  });
+  const chunks: string[] = [];
+  try {
+    for (let i = 0; i < pages.length; i++) {
+      if (opts.isCancelled?.()) throw new DOMException("Aborted", "AbortError");
+      opts.onProgress?.(
+        10 + Math.round((i / pages.length) * 80),
+        `OCR page ${i + 1} of ${pages.length}…`
+      );
+      const { data } = await worker.recognize(pages[i].blob);
+      chunks.push(`--- Page ${i + 1} ---\n${data.text}`);
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return chunks.join("\n\n");
 }

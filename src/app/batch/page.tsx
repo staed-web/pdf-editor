@@ -27,7 +27,6 @@ import {
   rotatePages,
   renderPdfPages,
 } from "@/lib/pdf/ops";
-import { ocrToSearchablePdf } from "@/lib/pdf/ocr-searchable";
 import { downloadZip, isPdfFile } from "@/lib/download";
 import { formatBytes, cn } from "@/lib/utils";
 import {
@@ -131,6 +130,7 @@ export default function BatchPage() {
         return [{ name: suggestedName(file.name, "compressed"), data: out.bytes }];
       }
       case "ocr": {
+        const { ocrToSearchablePdf } = await import("@/lib/pdf/ocr-searchable");
         const out = await ocrToSearchablePdf(buf);
         return [{ name: suggestedName(file.name, "ocr"), data: out.bytes }];
       }

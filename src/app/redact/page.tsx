@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -18,6 +18,7 @@ import {
 } from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
 import { useProcessJob } from "@/hooks/useProcessJob";
+import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { redactRegions } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 import {
@@ -48,15 +49,22 @@ export default function RedactPage() {
 
   const pages = summary?.pageCount ?? 0;
 
-  const onFiles = async (files: File[]) => {
-    const f = files.find(isPdfFile);
-    if (!f) return toast.error("PDF only");
-    setFile(f);
-    setResult(null);
-    setRegions([]);
-    job.resetError();
-    setSummary(await inspectPdfFile(f));
-  };
+  const onFiles = useCallback(
+    async (files: File[]) => {
+      const f = files.find(isPdfFile);
+      if (!f) return toast.error("PDF only");
+      setFile(f);
+      setResult(null);
+      setRegions([]);
+      job.resetError();
+      setSummary(await inspectPdfFile(f));
+    },
+    [job.resetError]
+  );
+
+  useHandoffIntake("/redact", async (f) => {
+    await onFiles([f]);
+  });
 
   const resetAll = () => {
     setFile(null);
@@ -200,6 +208,7 @@ export default function RedactPage() {
             fileName={result.name}
             size={result.bytes.byteLength}
             blob={result.bytes}
+            fromTool="redact"
             onDownload={() => downloadBytes(result.bytes, result.name)}
             onProcessAnother={resetAll}
           />

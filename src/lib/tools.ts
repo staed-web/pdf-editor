@@ -952,7 +952,7 @@ export const TOOLS: ToolDef[] = [
     href: "/ocr",
     name: "OCR PDF",
     short: "Make searchable",
-    description: "Run Tesseract.js OCR on scanned pages → text layer or TXT/DOCX.",
+    description: "OCR scanned PDFs in-browser (Tesseract) → searchable PDF with Hindi/English languages.",
     category: "ai",
     icon: ScanText,
     accept: "application/pdf",

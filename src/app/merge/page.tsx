@@ -144,6 +144,7 @@ export default function MergePage() {
             size={result.byteLength}
             meta={`${files.length} files · ${formatBytes(totalBytes)} in`}
             blob={result}
+            fromTool="merge"
             onDownload={() => downloadBytes(result, resultName)}
             onProcessAnother={resetAll}
           />

@@ -7,6 +7,7 @@ import { formatBytes, cn } from "@/lib/utils";
 import { shareOrDownload } from "@/lib/share";
 import { haptic } from "@/hooks/useHaptic";
 import { toast } from "sonner";
+import { NextSteps, type NextStepAction } from "./NextSteps";
 
 export function ProcessSuccess({
   fileName,
@@ -17,6 +18,8 @@ export function ProcessSuccess({
   mime = "application/pdf",
   meta,
   beforeAfter,
+  fromTool,
+  nextSteps,
   className,
 }: {
   fileName: string;
@@ -28,6 +31,10 @@ export function ProcessSuccess({
   meta?: string;
   /** Optional before/after sizes (compress) */
   beforeAfter?: { before: number; after: number };
+  /** Tool slug that produced this result — enables NextSteps chips */
+  fromTool?: string;
+  /** Override default next-step chips */
+  nextSteps?: NextStepAction[];
   className?: string;
 }) {
   const [sharing, setSharing] = useState(false);
@@ -144,6 +151,16 @@ export function ProcessSuccess({
           )}
         </div>
       </div>
+
+      {blob && fromTool && (
+        <NextSteps
+          fromTool={fromTool}
+          fileName={fileName}
+          blob={blob}
+          mime={mime}
+          actions={nextSteps}
+        />
+      )}
     </div>
   );
 }

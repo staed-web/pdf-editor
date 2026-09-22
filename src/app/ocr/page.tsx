@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -17,15 +17,15 @@ import {
 } from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
 import { useProcessJob } from "@/hooks/useProcessJob";
-import { renderPdfPages } from "@/lib/pdf/ops";
-import { ocrToSearchablePdf } from "@/lib/pdf/ocr-searchable";
+import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { downloadBytes, isPdfFile } from "@/lib/download";
-import { createWorker } from "tesseract.js";
 import {
   inspectPdfFile,
   suggestedName,
   type PdfFileSummary,
 } from "@/lib/pdf/process-ux";
+import { DEFAULT_OCR_LANG, OCR_LANGS } from "@/lib/pdf/ocr-langs";
+import { cn } from "@/lib/utils";
 
 const tool = getTool("ocr")!;
 
@@ -39,17 +39,25 @@ export default function OcrPage() {
     mime: string;
   } | null>(null);
   const [searchable, setSearchable] = useState(true);
+  const [lang, setLang] = useState(DEFAULT_OCR_LANG);
   const job = useProcessJob();
 
-  const onFiles = async (fs: File[]) => {
-    const f = fs.find(isPdfFile);
-    if (!f) return toast.error("PDF only");
-    setFile(f);
-    setText("");
-    setResult(null);
-    job.resetError();
-    setSummary(await inspectPdfFile(f));
-  };
+  const onFiles = useCallback(
+    async (fs: File[]) => {
+      const f = fs.find(isPdfFile);
+      if (!f) return toast.error("PDF only");
+      setFile(f);
+      setText("");
+      setResult(null);
+      job.resetError();
+      setSummary(await inspectPdfFile(f));
+    },
+    [job.resetError]
+  );
+
+  useHandoffIntake("/ocr", async (f) => {
+    await onFiles([f]);
+  });
 
   const resetAll = () => {
     setFile(null);
@@ -65,7 +73,9 @@ export default function OcrPage() {
       setLabel("OCR in progress…");
       setProgress(5);
       if (searchable) {
+        const { ocrToSearchablePdf } = await import("@/lib/pdf/ocr-searchable");
         const ocr = await ocrToSearchablePdf(await file.arrayBuffer(), {
+          lang,
           onProgress: (pct, label) => {
             if (isCancelled()) return;
             setProgress(pct);
@@ -80,33 +90,17 @@ export default function OcrPage() {
           mime: "application/pdf",
         };
       }
-      const pages = await renderPdfPages(await file.arrayBuffer(), {
-        format: "png",
-        scale: 2,
-      });
-      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
-      const worker = await createWorker("eng", 1, {
-        logger: (m) => {
-          if (m.status === "recognizing text" && typeof m.progress === "number") {
-            if (!isCancelled()) {
-              setProgress(10 + Math.round(m.progress * 80));
-            }
-          }
+      const { ocrPagesToText } = await import("@/lib/pdf/ocr-searchable");
+      const full = await ocrPagesToText(await file.arrayBuffer(), {
+        lang,
+        isCancelled,
+        onProgress: (pct, label) => {
+          if (isCancelled()) return;
+          setProgress(pct);
+          if (label) setLabel(label);
         },
       });
-      const chunks: string[] = [];
-      try {
-        for (let i = 0; i < pages.length; i++) {
-          if (isCancelled()) throw new DOMException("Aborted", "AbortError");
-          setProgress(10 + Math.round((i / pages.length) * 80));
-          setLabel(`OCR page ${i + 1} of ${pages.length}…`);
-          const { data } = await worker.recognize(pages[i].blob);
-          chunks.push(`--- Page ${i + 1} ---\n${data.text}`);
-        }
-      } finally {
-        await worker.terminate();
-      }
-      const full = chunks.join("\n\n");
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
       return {
         text: full,
         bytes: new TextEncoder().encode(full),
@@ -120,6 +114,9 @@ export default function OcrPage() {
     toast.success(searchable ? "Searchable OCR PDF ready" : "OCR complete");
   };
 
+  const prominent = OCR_LANGS.filter((l) => l.prominent);
+  const more = OCR_LANGS.filter((l) => !l.prominent);
+
   return (
     <MarketingShell>
       <ToolShell
@@ -127,8 +124,10 @@ export default function OcrPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Runs Tesseract.js in your browser. Searchable mode embeds page
-              images plus an invisible text layer from word boxes.
+              Runs Tesseract.js in your browser (loaded only when you OCR).
+              Searchable mode embeds page images plus an invisible text layer
+              from word boxes. Hindi/Devanagari appears in the text preview;
+              Latin text is embedded for PDF search.
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="searchable">Searchable PDF output</Label>
@@ -137,6 +136,41 @@ export default function OcrPage() {
                 checked={searchable}
                 onCheckedChange={setSearchable}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Language</Label>
+              <div className="flex flex-wrap gap-2">
+                {prominent.map((l) => (
+                  <Button
+                    key={l.id}
+                    type="button"
+                    size="sm"
+                    variant={lang === l.id ? "default" : "outline"}
+                    className={cn(
+                      "rounded-full",
+                      l.prominent && lang !== l.id && "border-amber-300/80"
+                    )}
+                    onClick={() => setLang(l.id)}
+                  >
+                    {l.label}
+                  </Button>
+                ))}
+              </div>
+              <select
+                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+                value={more.some((m) => m.id === lang) ? lang : ""}
+                onChange={(e) => {
+                  if (e.target.value) setLang(e.target.value);
+                }}
+                aria-label="More OCR languages"
+              >
+                <option value="">More languages…</option>
+                {more.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <SoftLimitsNote />
             <Button className="w-full" disabled={!file || job.busy} onClick={run}>
@@ -176,6 +210,7 @@ export default function OcrPage() {
             size={result.bytes.byteLength}
             blob={result.bytes}
             mime={result.mime}
+            fromTool="ocr"
             onDownload={() =>
               downloadBytes(result.bytes, result.name, result.mime)
             }

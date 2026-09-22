@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -16,6 +16,7 @@ import {
 } from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
 import { useProcessJob } from "@/hooks/useProcessJob";
+import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { compressPdf } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 import { formatBytes } from "@/lib/utils";
@@ -42,14 +43,21 @@ export default function CompressPage() {
   } | null>(null);
   const job = useProcessJob();
 
-  const onFiles = async (fs: File[]) => {
-    const f = fs.find(isPdfFile);
-    if (!f) return toast.error("PDF only");
-    setFile(f);
-    setResult(null);
-    job.resetError();
-    setSummary(await inspectPdfFile(f));
-  };
+  const onFiles = useCallback(
+    async (fs: File[]) => {
+      const f = fs.find(isPdfFile);
+      if (!f) return toast.error("PDF only");
+      setFile(f);
+      setResult(null);
+      job.resetError();
+      setSummary(await inspectPdfFile(f));
+    },
+    [job.resetError]
+  );
+
+  useHandoffIntake("/compress", async (f) => {
+    await onFiles([f]);
+  });
 
   const resetAll = () => {
     setFile(null);
@@ -138,6 +146,7 @@ export default function CompressPage() {
             meta={`${result.pageCount} pages · JPEG q=${result.jpegQuality}`}
             blob={result.bytes}
             beforeAfter={{ before: result.originalSize, after: result.newSize }}
+            fromTool="compress"
             onDownload={() => downloadBytes(result.bytes, result.name)}
             onProcessAnother={resetAll}
           />

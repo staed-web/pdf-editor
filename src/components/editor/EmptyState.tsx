@@ -13,9 +13,11 @@ import {
 } from "@/lib/storage/recent";
 import type { RecentFileMeta } from "@/store/types";
 import { formatBytes, cn } from "@/lib/utils";
+import { consumeHandoff } from "@/lib/storage/handoff";
 
 export function EmptyState() {
   const openFile = useEditorStore((s) => s.openFile);
+  const setTool = useEditorStore((s) => s.setTool);
   const isLoading = useEditorStore((s) => s.isLoading);
   const loadError = useEditorStore((s) => s.loadError);
   const [dragOver, setDragOver] = useState(false);
@@ -32,6 +34,28 @@ export function EmptyState() {
   useEffect(() => {
     void refreshRecent();
   }, [refreshRecent]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const payload = await consumeHandoff("/edit");
+      if (!payload || cancelled) return;
+      try {
+        await openFile(payload.file);
+        if (payload.intent === "sign") {
+          setTool("signature");
+        }
+        toast.success(`Loaded “${payload.meta.name}” from previous step`);
+        void refreshRecent();
+      } catch {
+        toast.error("Could not load handed-off file");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intake once on mount
+  }, []);
 
   useEffect(() => {
     if (loadError) toast.error(loadError);
