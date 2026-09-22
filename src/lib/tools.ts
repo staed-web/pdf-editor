@@ -76,6 +76,7 @@ import {
   Ban,
   ImageDown,
   FileSearch,
+  FolderKanban,
 } from "lucide-react";
 
 export type ToolCategory =
@@ -124,6 +125,7 @@ export const CATEGORY_ORDER: ToolCategory[] = [
   "sign",
   "ai",
   "view",
+  "batch",
 ];
 
 export const TOOLS: ToolDef[] = [
@@ -1001,6 +1003,22 @@ export const TOOLS: ToolDef[] = [
     icon: BookOpenCheck,
     accept: "application/pdf",
   },
+
+  // —— Batch ——
+  {
+    slug: "batch",
+    href: "/batch",
+    name: "Batch workspace",
+    short: "Multi-file queue",
+    description:
+      "Drop many PDFs, pick one local operation (compress, OCR, unlock, watermark, and more), then download a ZIP. 100% in-browser.",
+    category: "batch",
+    icon: FolderKanban,
+    featured: true,
+    accept: "application/pdf",
+    multiple: true,
+  },
+
   {
     slug: "pdf-info",
     href: "/pdf-info",

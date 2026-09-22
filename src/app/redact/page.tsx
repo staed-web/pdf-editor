@@ -1,23 +1,37 @@
 "use client";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
-import { ResultBar } from "@/components/tools/ResultBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  FileSummary,
+  ProcessProgress,
+  ProcessError,
+  ProcessSuccess,
+  SoftLimitsNote,
+} from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
-import { redactRegions, getPageCount } from "@/lib/pdf/ops";
+import { useProcessJob } from "@/hooks/useProcessJob";
+import { redactRegions } from "@/lib/pdf/ops";
 import { downloadBytes, isPdfFile } from "@/lib/download";
+import {
+  inspectPdfFile,
+  suggestedName,
+  classifyProcessError,
+  type PdfFileSummary,
+} from "@/lib/pdf/process-ux";
 
 const tool = getTool("redact")!;
 
 export default function RedactPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [pages, setPages] = useState(0);
+  const [summary, setSummary] = useState<PdfFileSummary | null>(null);
   const [page, setPage] = useState(1);
   const [x, setX] = useState(72);
   const [y, setY] = useState(72);
@@ -26,9 +40,13 @@ export default function RedactPage() {
   const [regions, setRegions] = useState<
     { pageIndex: number; x: number; y: number; w: number; h: number }[]
   >([]);
-  const [result, setResult] = useState<Uint8Array | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ bytes: Uint8Array; name: string } | null>(
+    null
+  );
   const [hardWipe, setHardWipe] = useState(true);
+  const job = useProcessJob();
+
+  const pages = summary?.pageCount ?? 0;
 
   const onFiles = async (files: File[]) => {
     const f = files.find(isPdfFile);
@@ -36,27 +54,44 @@ export default function RedactPage() {
     setFile(f);
     setResult(null);
     setRegions([]);
-    setPages(await getPageCount(await f.arrayBuffer()));
+    job.resetError();
+    setSummary(await inspectPdfFile(f));
+  };
+
+  const resetAll = () => {
+    setFile(null);
+    setSummary(null);
+    setRegions([]);
+    setResult(null);
+    job.resetError();
   };
 
   const run = async () => {
-    if (!file || !regions.length) return toast.error("Add at least one region");
-    setBusy(true);
-    try {
-      const bytes = await redactRegions(await file.arrayBuffer(), regions, {
+    if (!file) return;
+    if (!regions.length) {
+      job.setError(
+        classifyProcessError(new Error("Add at least one region to redact"))
+      );
+      return;
+    }
+    const bytes = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+      setLabel(hardWipe ? "Hard wipe redaction…" : "Applying redactions…");
+      setProgress(25);
+      const out = await redactRegions(await file.arrayBuffer(), regions, {
         hardWipe,
       });
-      setResult(bytes);
-      toast.success(
-        hardWipe
-          ? "Redacted with hard wipe (affected pages rasterized)"
-          : "Redacted (visual black boxes)"
-      );
-    } catch {
-      toast.error("Failed");
-    } finally {
-      setBusy(false);
-    }
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+      setProgress(90);
+      return out;
+    });
+    if (!bytes) return;
+    const name = suggestedName(file.name, "redacted");
+    setResult({ bytes, name });
+    toast.success(
+      hardWipe
+        ? "Redacted with hard wipe (affected pages rasterized)"
+        : "Redacted (visual black boxes)"
+    );
   };
 
   return (
@@ -132,12 +167,13 @@ export default function RedactPage() {
             <p className="text-[11px] text-zinc-500">
               {regions.length} region(s) · {pages ? pages + " pages" : "no file"}
             </p>
+            <SoftLimitsNote />
             <Button
               className="w-full"
-              disabled={!file || busy || !regions.length}
+              disabled={!file || job.busy || !regions.length}
               onClick={run}
             >
-              {busy ? "Working…" : "Apply redactions"}
+              {job.busy ? "Working…" : "Apply redactions"}
             </Button>
             <Button asChild variant="secondary" className="w-full">
               <a href="/edit">Open full editor</a>
@@ -150,11 +186,22 @@ export default function RedactPage() {
           onFiles={onFiles}
           label={file ? file.name : "Drop a PDF"}
         />
+        <FileSummary summary={summary} />
+        {job.busy && (
+          <ProcessProgress
+            value={job.progress}
+            label={job.progressLabel}
+            onCancel={job.cancel}
+          />
+        )}
+        <ProcessError error={job.error} onDismiss={job.resetError} />
         {result && (
-          <ResultBar
-            fileName="redacted.pdf"
-            size={result.byteLength}
-            onDownload={() => downloadBytes(result, "redacted.pdf")}
+          <ProcessSuccess
+            fileName={result.name}
+            size={result.bytes.byteLength}
+            blob={result.bytes}
+            onDownload={() => downloadBytes(result.bytes, result.name)}
+            onProcessAnother={resetAll}
           />
         )}
       </ToolShell>

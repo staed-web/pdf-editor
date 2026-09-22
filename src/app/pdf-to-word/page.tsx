@@ -1,51 +1,79 @@
 "use client";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
-import { ResultBar } from "@/components/tools/ResultBar";
-import { ProgressBar } from "@/components/tools/ProgressBar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  FileSummary,
+  ProcessProgress,
+  ProcessError,
+  ProcessSuccess,
+  SoftLimitsNote,
+} from "@/components/tools/process";
 import { getTool } from "@/lib/tools";
+import { useProcessJob } from "@/hooks/useProcessJob";
 import { convertPdfToDocx, type PdfToDocxMode } from "@/lib/pdf/pdf-to-docx";
 import { downloadBytes, isPdfFile } from "@/lib/download";
+import {
+  inspectPdfFile,
+  suggestedName,
+  type PdfFileSummary,
+} from "@/lib/pdf/process-ux";
 
 const tool = getTool("pdf-to-word")!;
 
 export default function PdfToWordPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<{ name: string; bytes: Uint8Array } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [summary, setSummary] = useState<PdfFileSummary | null>(null);
+  const [result, setResult] = useState<{ name: string; bytes: Uint8Array } | null>(
+    null
+  );
   const [mode, setMode] = useState<PdfToDocxMode>("rich");
+  const job = useProcessJob();
+
+  const onFiles = async (fs: File[]) => {
+    const f = fs.find(isPdfFile);
+    if (!f) return toast.error("PDF only");
+    setFile(f);
+    setResult(null);
+    job.resetError();
+    setSummary(await inspectPdfFile(f));
+  };
+
+  const resetAll = () => {
+    setFile(null);
+    setSummary(null);
+    setResult(null);
+    job.resetError();
+  };
 
   const run = async () => {
     if (!file) return;
-    setBusy(true);
-    setProgress(5);
-    setResult(null);
-    try {
-      const bytes = await convertPdfToDocx(await file.arrayBuffer(), {
+    const bytes = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+      setLabel("Building Word document…");
+      setProgress(5);
+      const out = await convertPdfToDocx(await file.arrayBuffer(), {
         mode,
         pageBreaks: true,
-        onProgress: (pct) => setProgress(Math.max(5, pct)),
+        onProgress: (pct) => {
+          if (!isCancelled()) setProgress(Math.max(5, pct));
+        },
       });
-      const base = file.name.replace(/\.pdf$/i, "") || "export";
-      setResult({ name: `${base}.docx`, bytes });
-      setProgress(100);
-      toast.success(
-        mode === "rich"
-          ? "DOCX ready (layout + images for empty pages)"
-          : "DOCX ready (fast text)"
-      );
-    } catch (e) {
-      console.error(e);
-      toast.error("Conversion failed");
-    } finally {
-      setBusy(false);
-    }
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+      return out;
+    });
+    if (!bytes) return;
+    const name = suggestedName(file.name, mode === "rich" ? "rich" : "text", "docx");
+    setResult({ name, bytes });
+    toast.success(
+      mode === "rich"
+        ? "DOCX ready (layout + images for empty pages)"
+        : "DOCX ready (fast text)"
+    );
   };
 
   return (
@@ -78,27 +106,33 @@ export default function PdfToWordPage() {
                 </Button>
               </div>
             </div>
-            <Button className="w-full" disabled={!file || busy} onClick={run}>
-              {busy ? "Converting…" : "Export DOCX"}
+            <SoftLimitsNote />
+            <Button className="w-full" disabled={!file || job.busy} onClick={run}>
+              {job.busy ? "Converting…" : "Export DOCX"}
             </Button>
           </>
         }
       >
         <DropZone
           accept="application/pdf"
-          onFiles={(fs) => {
-            const f = fs.find(isPdfFile);
-            if (!f) return toast.error("PDF only");
-            setFile(f);
-            setResult(null);
-          }}
+          onFiles={onFiles}
           label={file ? file.name : "Drop a PDF"}
         />
-        {busy && <ProgressBar value={progress} label="Building Word document…" />}
+        <FileSummary summary={summary} />
+        {job.busy && (
+          <ProcessProgress
+            value={job.progress}
+            label={job.progressLabel}
+            onCancel={job.cancel}
+          />
+        )}
+        <ProcessError error={job.error} onDismiss={job.resetError} />
         {result && (
-          <ResultBar
+          <ProcessSuccess
             fileName={result.name}
             size={result.bytes.byteLength}
+            blob={result.bytes}
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onDownload={() =>
               downloadBytes(
                 result.bytes,
@@ -106,6 +140,7 @@ export default function PdfToWordPage() {
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               )
             }
+            onProcessAnother={resetAll}
           />
         )}
       </ToolShell>

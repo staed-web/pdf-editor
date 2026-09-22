@@ -63,6 +63,12 @@ export function SiteHeader() {
             Pricing
           </Link>
           <Link
+            href="/batch"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+          >
+            Batch
+          </Link>
+          <Link
             href="/tools"
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
@@ -93,6 +99,9 @@ export function SiteHeader() {
           <div className="flex flex-col gap-1">
             <Link href="/tools" className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
               All tools
+            </Link>
+            <Link href="/batch" className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
+              Batch
             </Link>
             <Link href="/edit" className="rounded-lg px-3 py-2 text-sm font-medium" onClick={() => setOpen(false)}>
               Editor
