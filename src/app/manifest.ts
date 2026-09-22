@@ -9,11 +9,9 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    // Prefer fullscreen when the OS allows; fall back to standalone (edge-to-edge chrome).
-    display_override: ["fullscreen", "standalone"],
     orientation: "any",
-    background_color: "#f4f3ef",
-    theme_color: "#f4f3ef",
+    background_color: "#f7f6f3",
+    theme_color: "#d97706",
     categories: ["productivity", "utilities"],
     icons: [
       {
@@ -41,6 +39,5 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
-  } as MetadataRoute.Manifest & { display_override?: string[] };
+  };
 }
-
