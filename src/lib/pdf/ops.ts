@@ -53,7 +53,7 @@ export async function mergePdfFiles(
   return out.save({ useObjectStreams: true });
 }
 
-function attachSimpleOutlines(
+export function attachSimpleOutlines(
   doc: PDFDocument,
   items: { title: string; pageIndex: number }[]
 ) {

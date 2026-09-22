@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { HexColorPicker } from "react-colorful";
 import { useEditorStore } from "@/store/editorStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,12 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { STAMP_PRESETS } from "@/store/types";
-import { cn } from "@/lib/utils";
+import { cn, downloadBlob } from "@/lib/utils";
+import { downloadBytes } from "@/lib/download";
+import {
+  editorAnnotationsToRows,
+  exportAnnotationSummary,
+} from "@/lib/pdf/annotation-summary";
 
 export function PropertiesPanel() {
   const show = useEditorStore((s) => s.settings.showProperties);
   const selectedIds = useEditorStore((s) => s.selectedIds);
   const annotations = useEditorStore((s) => s.annotations);
+  const fileName = useEditorStore((s) => s.fileName);
   const updateAnnotation = useEditorStore((s) => s.updateAnnotation);
   const deleteSelected = useEditorStore((s) => s.deleteSelected);
   const settings = useEditorStore((s) => s.settings);
@@ -205,6 +212,45 @@ export function PropertiesPanel() {
                   </div>
                 </div>
               )}
+
+          {annotations.length > 0 && (
+            <div>
+              <Label>Export comments ({annotations.length})</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(["txt", "csv", "pdf"] as const).map((fmt) => (
+                  <Button
+                    key={fmt}
+                    size="sm"
+                    variant="outline"
+                    className="uppercase"
+                    onClick={async () => {
+                      try {
+                        const rows = editorAnnotationsToRows(annotations);
+                        const base = (fileName || "document").replace(/\.pdf$/i, "");
+                        const out = await exportAnnotationSummary(
+                          rows,
+                          fmt,
+                          `${base}-comments`
+                        );
+                        downloadBytes(out.bytes, out.name, out.mime);
+                        toast.success(`Exported ${fmt.toUpperCase()}`);
+                      } catch (e) {
+                        toast.error(
+                          e instanceof Error ? e.message : "Export failed"
+                        );
+                      }
+                    }}
+                  >
+                    {fmt}
+                  </Button>
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-zinc-500">
+                TXT / CSV / PDF summary of marks on this document.
+              </p>
+            </div>
+          )}
+
               <p className="text-xs leading-relaxed text-zinc-500">
                 Select an annotation to edit its properties, or adjust defaults for new marks.
               </p>

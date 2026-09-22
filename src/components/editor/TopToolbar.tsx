@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   FileUp,
   Download,
+  FileSpreadsheet,
   Printer,
   Undo2,
   Redo2,
@@ -39,6 +40,11 @@ import { useEditorStore } from "@/store/editorStore";
 import { exportEditedPdf, mergePdfs, extractPages } from "@/lib/pdf/export";
 import { searchPdf } from "@/lib/pdf/search";
 import { downloadBlob, cn } from "@/lib/utils";
+import { downloadBytes } from "@/lib/download";
+import {
+  editorAnnotationsToRows,
+  exportAnnotationSummary,
+} from "@/lib/pdf/annotation-summary";
 import { useThemeStore } from "@/lib/theme/theme-store";
 
 export function TopToolbar() {
@@ -102,6 +108,23 @@ export function TopToolbar() {
       toast.error(e instanceof Error ? e.message : "Export failed");
     } finally {
       setExporting(false);
+    }
+  };
+
+
+  const onExportComments = async (format: "txt" | "csv" | "pdf") => {
+    if (!annotations.length) {
+      toast.message("No annotations to export");
+      return;
+    }
+    try {
+      const rows = editorAnnotationsToRows(annotations);
+      const base = (fileName || "document").replace(/\.pdf$/i, "");
+      const out = await exportAnnotationSummary(rows, format, `${base}-comments`);
+      downloadBytes(out.bytes, out.name, out.mime);
+      toast.success(`Exported ${rows.length} comment(s) as ${format.toUpperCase()}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Comments export failed");
     }
   };
 
@@ -209,6 +232,13 @@ export function TopToolbar() {
         />
         <ToolBtn tip="Export" disabled={!pdfBytes || exporting} onClick={() => void onExport()}>
           <Download />
+        </ToolBtn>
+        <ToolBtn
+          tip="Export comments (TXT)"
+          disabled={!annotations.length}
+          onClick={() => void onExportComments("txt")}
+        >
+          <FileSpreadsheet />
         </ToolBtn>
         <ToolBtn tip="Print" disabled={!pdfBytes} onClick={() => void onPrint()}>
           <Printer />
