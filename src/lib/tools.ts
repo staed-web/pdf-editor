@@ -1021,14 +1021,14 @@ export const TOOLS: ToolDef[] = [
     slug: "chat-pdf",
     href: "/chat-pdf",
     name: "Ask PDF",
-    short: "On-device RAG chat",
+    short: "Browser Prompt API Q&A",
     description:
-      "On-device RAG: MiniLM embeddings + DistilBERT QA (transformers.js). Cites pages; optional OCR for scant scans. No upload, no paid LLM.",
+      "Ask questions about a PDF privately. Prefers the browser built-in Prompt API when available. Does not download large Xenova chat/RAG model packs. No upload, no paid LLM.",
     category: "ai",
     icon: MessageSquare,
     accept: "application/pdf",
     featured: true,
-    honestyBadges: ["on-device-model"],
+    honestyBadges: ["browser-prompt-api"],
   },
 
   // —— View ——

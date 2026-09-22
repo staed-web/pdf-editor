@@ -50,11 +50,12 @@ export default function PrivacyPage() {
       <h3>External third-party services we do not use for PDFs</h3>
       <p>
         InstantPDFEdit does not send your PDF contents to paid cloud OCR, LLM,
-        or e-sign backends for the shipped free tools. Ask PDF, Summarize, and
-        Translate run on-device models (or the Browser Translator API when
-        available) in your browser; heuristic paths are labeled Rules /
-        heuristic — not AI. There is no optional cloud (BYOK) upload path
-        today.
+        or e-sign backends for the shipped free tools. Summarize and OCR use
+        on-device models in your browser; Translate uses the Browser Translator
+        API and/or on-device Marian MT; Ask PDF prefers the Browser Prompt API
+        and does not download Xenova chat/RAG models. Heuristic paths are
+        labeled Rules / heuristic — not AI. There is no optional cloud (BYOK)
+        upload path today.
       </p>
 
       <h2>Browser storage</h2>
