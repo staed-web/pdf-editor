@@ -15,6 +15,7 @@ import { ToolCard } from "@/components/tools/ToolCard";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useStandalone } from "@/hooks/useStandalone";
+import { AdBanner } from "@/components/ads/AdBanner";
 import {
   featuredTools,
   TOOLS,
@@ -137,6 +138,10 @@ function WebHome() {
         </div>
       </section>
 
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <AdBanner variant="leaderboard" className="w-full max-w-none" />
+      </div>
+
       <section className="bg-[var(--panel)] py-14 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="mb-8 text-2xl font-semibold tracking-tight text-foreground">
@@ -200,6 +205,10 @@ function WebHome() {
           ))}
         </ol>
       </section>
+
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <AdBanner variant="infeed" className="w-full max-w-none" />
+      </div>
 
       <section className="border-t border-[var(--hairline)] bg-[var(--card)] py-14 sm:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ChevronRight } from "lucide-react";
+import { AdBanner } from "@/components/ads/AdBanner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,12 @@ export default function ToolsIndexPage() {
             ))}
           </div>
         </div>
+
+        {!standalone && (
+          <div className="mt-6 sm:mt-8">
+            <AdBanner variant="leaderboard" className="w-full max-w-none" />
+          </div>
+        )}
 
         {standalone ? (
           <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-[var(--hairline)] bg-[var(--card)] shadow-[var(--shadow-sm)]">

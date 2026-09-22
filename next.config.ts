@@ -24,6 +24,7 @@ const withSerwist = withSerwistInit({
   exclude: [
     /pdf\.worker/i,
     /\.map$/,
+    /ads\.txt$/,
   ],
 });
 

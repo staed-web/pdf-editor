@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, NetworkFirst, CacheFirst, ExpirationPlugin } from "serwist";
+import { Serwist, NetworkFirst, NetworkOnly, CacheFirst, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -19,6 +19,7 @@ declare const self: ServiceWorkerGlobalScope;
  * - pdf.worker.min.mjs is excluded from precache (exclude in next.config) and
  *   cached at runtime via CacheFirst so builds don’t break worker registration.
  * - Large user PDFs are never cached by the SW (opaque / no request).
+ * - /ads.txt uses NetworkOnly so AdSense verification is never stale-cached.
  * - Serwist uses webpack injectManifest; `next build` must use webpack
  *   (Next 16 default for production build). Turbopack `next dev` disables SW.
  */
@@ -29,6 +30,11 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    // ads.txt must stay fresh for AdSense crawlers — never serve a stale offline copy
+    {
+      matcher: ({ url }) => url.pathname === "/ads.txt",
+      handler: new NetworkOnly(),
+    },
     {
       matcher: ({ url }) => url.pathname.includes("pdf.worker"),
       handler: new CacheFirst({

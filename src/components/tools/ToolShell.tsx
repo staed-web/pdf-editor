@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Shield, SlidersHorizontal, X } from "lucide-react";
 import type { ToolDef } from "@/lib/tools";
+import { AdBanner } from "@/components/ads/AdBanner";
 import { RelatedTools } from "./RelatedTools";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/hooks/useHaptic";
@@ -78,6 +79,12 @@ export function ToolShell({
           </aside>
         )}
       </div>
+
+      {!standalone && (
+        <div className="mt-8 mb-2">
+          <AdBanner variant="infeed" className="w-full max-w-none" />
+        </div>
+      )}
 
       <RelatedTools slug={tool.slug} />
 
