@@ -1,21 +1,31 @@
 /**
- * On-device PDF summarization via transformers.js (DistilBART).
- * Map-reduce over chunks for long documents. Heuristic outline stays available
- * for weak devices (no model download).
+ * PDF summarization priority:
+ * 1. Chrome Summarizer API (built-in, preferred)
+ * 2. Rules / heuristic extractive outline (default when no browser AI)
+ * 3. Optional Xenova DistilBART (~230 MB) — OFF by default to avoid OOM
  */
 
 import {
   chunkText,
   loadTransformers,
-  throwIfAborted,
   type ProgressCb,
 } from "./transformers-runtime";
+import {
+  createBrowserSummarizer,
+  isSummarizerUsable,
+  throwIfAborted,
+} from "./chrome-ai";
 
-/** Quantized DistilBART CNN — English abstractive summarization (~230 MB first download). */
+/** Quantized DistilBART CNN — English abstractive summarization (~230 MB). Opt-in only. */
 export const SUMMARIZE_MODEL_ID = "Xenova/distilbart-cnn-6-6";
-export const SUMMARIZE_MODEL_SIZE_LABEL = "~230 MB (one-time, cached in browser)";
+export const SUMMARIZE_MODEL_SIZE_LABEL = "~230 MB (opt-in, cached in browser)";
 
 export type SummarizeProgress = (pct: number, label: string) => void;
+
+export type SummarizeMethod =
+  | "browser-summarizer"
+  | "rules-heuristic"
+  | "xenova-distilbart";
 
 export function localOutline(text: string): string[] {
   const sentences = text
@@ -37,18 +47,18 @@ export function localOutline(text: string): string[] {
   return sentences.filter((s) => set.has(s));
 }
 
-type Summarizer = (input: string, opts?: Record<string, unknown>) => Promise<
+type XenovaSummarizer = (input: string, opts?: Record<string, unknown>) => Promise<
   | { summary_text: string }
   | { summary_text: string }[]
 >;
 
-let summarizerPromise: Promise<Summarizer> | null = null;
+let summarizerPromise: Promise<XenovaSummarizer> | null = null;
 let summarizerModel: string | null = null;
 
-async function getSummarizer(
+async function getXenovaSummarizer(
   onProgress?: ProgressCb,
   signal?: AbortSignal
-): Promise<Summarizer> {
+): Promise<XenovaSummarizer> {
   throwIfAborted(signal);
   if (summarizerPromise && summarizerModel === SUMMARIZE_MODEL_ID) {
     return summarizerPromise;
@@ -73,7 +83,7 @@ async function getSummarizer(
         total: data.total,
       });
     },
-  }) as Promise<Summarizer>;
+  }) as Promise<XenovaSummarizer>;
   try {
     return await summarizerPromise;
   } catch (e) {
@@ -90,22 +100,47 @@ function unwrapSummary(
   return (out.summary_text || "").trim();
 }
 
-export async function summarizeOnDevice(
-  text: string,
-  opts: {
-    signal?: AbortSignal;
-    onProgress?: SummarizeProgress;
-  } = {}
-): Promise<{ summary: string; chunks: number; modelId: string }> {
-  const { signal, onProgress } = opts;
-  throwIfAborted(signal);
+async function summarizeWithBrowserApi(
+  cleaned: string,
+  signal?: AbortSignal,
+  onProgress?: SummarizeProgress
+): Promise<{ summary: string; chunks: number } | null> {
+  if (!(await isSummarizerUsable())) return null;
+  const summarizer = await createBrowserSummarizer({ signal, onProgress });
+  if (!summarizer) return null;
 
-  const cleaned = text.replace(/\s+/g, " ").trim();
-  if (!cleaned) {
-    return { summary: "", chunks: 0, modelId: SUMMARIZE_MODEL_ID };
+  try {
+    const chunks = chunkText(cleaned, 3500, 120);
+    const partials: string[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      throwIfAborted(signal);
+      onProgress?.(
+        45 + Math.round((i / Math.max(chunks.length, 1)) * 50),
+        `Browser summarize ${i + 1}/${chunks.length}…`
+      );
+      partials.push((await summarizer.summarize(chunks[i])).trim());
+    }
+    onProgress?.(100, "Summary ready (Browser Summarizer API)");
+    try {
+      summarizer.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    return {
+      summary: partials.filter(Boolean).join("\n\n"),
+      chunks: chunks.length,
+    };
+  } catch {
+    return null;
   }
+}
 
-  onProgress?.(2, `Preparing on-device model (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
+async function summarizeWithXenova(
+  cleaned: string,
+  signal?: AbortSignal,
+  onProgress?: SummarizeProgress
+): Promise<{ summary: string; chunks: number; modelId: string }> {
+  onProgress?.(2, `Preparing opt-in DistilBART (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
 
   const downloadPct = (info: {
     status: string;
@@ -128,7 +163,7 @@ export async function summarizeOnDevice(
     }
   };
 
-  const summarizer = await getSummarizer(downloadPct, signal);
+  const summarizer = await getXenovaSummarizer(downloadPct, signal);
   throwIfAborted(signal);
   onProgress?.(45, "Chunking document…");
 
@@ -140,7 +175,7 @@ export async function summarizeOnDevice(
     const base = 45 + Math.round((i / Math.max(chunks.length, 1)) * 45);
     onProgress?.(
       base,
-      `Summarizing chunk ${i + 1}/${chunks.length} (on-device)…`
+      `Summarizing chunk ${i + 1}/${chunks.length} (DistilBART)…`
     );
     const out = await summarizer(chunks[i], {
       max_new_tokens: 120,
@@ -160,7 +195,6 @@ export async function summarizeOnDevice(
   } else {
     onProgress?.(92, "Combining chunk summaries (map-reduce)…");
     const joined = partials.join(" ");
-    // Second pass if still long
     const reduceChunks = chunkText(joined, 3000, 100);
     if (reduceChunks.length === 1) {
       summary = unwrapSummary(
@@ -196,4 +230,91 @@ export async function summarizeOnDevice(
 
   onProgress?.(100, "Summary ready");
   return { summary, chunks: chunks.length, modelId: SUMMARIZE_MODEL_ID };
+}
+
+/**
+ * Prefer Browser Summarizer API. DistilBART only when allowXenova=true.
+ * When neither AI path works, returns empty summary (caller uses localOutline).
+ */
+export async function summarizeOnDevice(
+  text: string,
+  opts: {
+    signal?: AbortSignal;
+    onProgress?: SummarizeProgress;
+    /** Opt-in heavy DistilBART download. Default false. */
+    allowXenova?: boolean;
+    /** Prefer heuristic only (no browser AI, no Xenova). */
+    heuristicOnly?: boolean;
+  } = {}
+): Promise<{
+  summary: string;
+  chunks: number;
+  modelId: string;
+  method: SummarizeMethod;
+}> {
+  const { signal, onProgress, allowXenova = false, heuristicOnly = false } = opts;
+  throwIfAborted(signal);
+
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) {
+    return {
+      summary: "",
+      chunks: 0,
+      modelId: "",
+      method: "rules-heuristic",
+    };
+  }
+
+  if (heuristicOnly) {
+    onProgress?.(100, "Heuristic outline only");
+    return {
+      summary: "",
+      chunks: 0,
+      modelId: "",
+      method: "rules-heuristic",
+    };
+  }
+
+  // 1. Browser Summarizer API
+  onProgress?.(4, "Checking Browser Summarizer API…");
+  const browser = await summarizeWithBrowserApi(cleaned, signal, onProgress);
+  if (browser?.summary) {
+    return {
+      summary: browser.summary,
+      chunks: browser.chunks,
+      modelId: "Browser Summarizer API",
+      method: "browser-summarizer",
+    };
+  }
+
+  // 2. Opt-in Xenova only
+  if (allowXenova) {
+    const xen = await summarizeWithXenova(cleaned, signal, onProgress);
+    return {
+      ...xen,
+      method: "xenova-distilbart",
+    };
+  }
+
+  // 3. No download — caller should show localOutline
+  onProgress?.(100, "No browser summarizer — use heuristic outline");
+  return {
+    summary: "",
+    chunks: 0,
+    modelId: "",
+    method: "rules-heuristic",
+  };
+}
+
+export async function probeSummarizeEngine(): Promise<{
+  browserSummarizer: boolean;
+  label: string;
+}> {
+  const browserSummarizer = await isSummarizerUsable();
+  return {
+    browserSummarizer,
+    label: browserSummarizer
+      ? "Uses your browser’s built-in Summarizer API"
+      : "Rules / heuristic outline (no browser summarizer)",
+  };
 }

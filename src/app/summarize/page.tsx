@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -26,7 +26,6 @@ import {
   type PdfFileSummary,
 } from "@/lib/pdf/process-ux";
 import {
-  SUMMARIZE_MODEL_ID,
   SUMMARIZE_MODEL_SIZE_LABEL,
   localOutline,
 } from "@/lib/ai/summarize-ondevice";
@@ -36,16 +35,42 @@ const tool = getTool("summarize")!;
 export default function SummarizePage() {
   const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<PdfFileSummary | null>(null);
+  /** Prefer heuristic only — skip browser AI. */
   const [fastOnly, setFastOnly] = useState(false);
+  /** Opt-in DistilBART — off by default to avoid OOM. */
+  const [allowXenova, setAllowXenova] = useState(false);
   const [outline, setOutline] = useState<string[]>([]);
   const [summaryText, setSummaryText] = useState("");
   const [badge, setBadge] = useState("");
+  const [engineHint, setEngineHint] = useState(
+    "Checking Browser Summarizer API…"
+  );
   const [result, setResult] = useState<{
     bytes: Uint8Array;
     name: string;
     mime: string;
   } | null>(null);
   const job = useProcessJob();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { probeSummarizeEngine } = await import(
+          "@/lib/ai/summarize-ondevice"
+        );
+        const probe = await probeSummarizeEngine();
+        if (!cancelled) setEngineHint(probe.label);
+      } catch {
+        if (!cancelled) {
+          setEngineHint("Rules / heuristic outline (no browser summarizer)");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onFiles = useCallback(
     async (fs: File[]) => {
@@ -90,10 +115,11 @@ export default function SummarizePage() {
         );
       }
 
+      const bullets = localOutline(text);
+
       if (fastOnly) {
         setLabel("Building fast outline (no model)…");
         setProgress(60);
-        const bullets = localOutline(text);
         const md = [
           `# Rules / heuristic outline`,
           ``,
@@ -118,7 +144,7 @@ export default function SummarizePage() {
         };
       }
 
-      setLabel(`Loading on-device model (${SUMMARIZE_MODEL_SIZE_LABEL})…`);
+      setLabel("Summarizing…");
       setProgress(8);
       const { summarizeOnDevice } = await import("@/lib/ai/summarize-ondevice");
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
@@ -131,6 +157,7 @@ export default function SummarizePage() {
       try {
         const resultSm = await summarizeOnDevice(text, {
           signal: ac.signal,
+          allowXenova,
           onProgress: (pct, label) => {
             if (isCancelled()) {
               ac.abort();
@@ -142,34 +169,89 @@ export default function SummarizePage() {
         });
         if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
-        const bullets = localOutline(text);
+        if (resultSm.method === "browser-summarizer" && resultSm.summary) {
+          const md = [
+            `# Browser Summarizer API`,
+            ``,
+            `Method: Browser Summarizer API · chunks: ${resultSm.chunks}`,
+            ``,
+            resultSm.summary,
+            ``,
+            `---`,
+            ``,
+            `# Extractive outline (bonus)`,
+            ``,
+            ...bullets.map((b) => `- ${b}`),
+            ``,
+            `---`,
+            ``,
+            `# Extracted text (truncated)`,
+            ``,
+            text.slice(0, 50000),
+          ].join("\n");
+          return {
+            outline: bullets,
+            summaryText: resultSm.summary,
+            badge: "Uses your browser’s built-in Summarizer API",
+            bytes: new TextEncoder().encode(md),
+            name: suggestedName(file.name, "summary", "md"),
+            mime: "text/markdown",
+          };
+        }
+
+        if (resultSm.method === "xenova-distilbart" && resultSm.summary) {
+          const md = [
+            `# On-device DistilBART summary (opt-in)`,
+            ``,
+            `Model: \`${resultSm.modelId}\` · chunks: ${resultSm.chunks}`,
+            `Download ≈ ${SUMMARIZE_MODEL_SIZE_LABEL} (cached after first run).`,
+            ``,
+            resultSm.summary,
+            ``,
+            `---`,
+            ``,
+            `# Extractive outline (bonus)`,
+            ``,
+            ...bullets.map((b) => `- ${b}`),
+            ``,
+            `---`,
+            ``,
+            `# Extracted text (truncated)`,
+            ``,
+            text.slice(0, 50000),
+          ].join("\n");
+          return {
+            outline: bullets,
+            summaryText: resultSm.summary,
+            badge: `On-device model · ${resultSm.modelId} (opt-in)`,
+            bytes: new TextEncoder().encode(md),
+            name: suggestedName(file.name, "summary", "md"),
+            mime: "text/markdown",
+          };
+        }
+
+        // Default honest fallback — no Xenova auto-download
         const md = [
-          `# On-device summary`,
+          `# Rules / heuristic outline`,
           ``,
-          `Model: \`${resultSm.modelId}\` · chunks: ${resultSm.chunks} · badge: On-device model`,
-          `First-run download ≈ ${SUMMARIZE_MODEL_SIZE_LABEL} (cached in browser after).`,
-          ``,
-          resultSm.summary,
-          ``,
-          `---`,
-          ``,
-          `# Extractive outline (bonus)`,
+          `Browser Summarizer API unavailable` +
+            (allowXenova ? "" : "; DistilBART left off to avoid large downloads") +
+            `. Showing extractive outline.`,
           ``,
           ...bullets.map((b) => `- ${b}`),
           ``,
           `---`,
           ``,
-          `# Extracted text (truncated)`,
+          `# Extracted text`,
           ``,
-          text.slice(0, 50000),
+          text.slice(0, 100000),
         ].join("\n");
-
         return {
           outline: bullets,
-          summaryText: resultSm.summary,
-          badge: `On-device model · ${resultSm.modelId}`,
+          summaryText: "",
+          badge: "Rules / heuristic · extractive outline",
           bytes: new TextEncoder().encode(md),
-          name: suggestedName(file.name, "summary", "md"),
+          name: suggestedName(file.name, "outline", "md"),
           mime: "text/markdown",
         };
       } finally {
@@ -182,7 +264,7 @@ export default function SummarizePage() {
     setSummaryText(out.summaryText);
     setBadge(out.badge);
     setResult({ bytes: out.bytes, name: out.name, mime: out.mime });
-    toast.success(out.summaryText ? "On-device summary ready" : "Outline ready");
+    toast.success(out.summaryText ? "Summary ready" : "Outline ready");
   };
 
   return (
@@ -192,26 +274,45 @@ export default function SummarizePage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Privacy-first: text never leaves this device. Primary path runs{" "}
-              <code className="text-[10px]">{SUMMARIZE_MODEL_ID}</code> via
-              transformers.js (lazy-loaded only on this route). First download{" "}
-              {SUMMARIZE_MODEL_SIZE_LABEL}, then cached in the browser.
+              Privacy-first: text never leaves this device. Prefers the browser
+              Summarizer API when available. DistilBART (~230 MB) is{" "}
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">
+                opt-in only
+              </strong>{" "}
+              so this page does not OOM by default.
+            </p>
+            <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
+              {engineHint}
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="fast-outline">
-                Rules / heuristic outline — weak devices
+                Rules / heuristic outline only
               </Label>
               <Switch
                 id="fast-outline"
                 checked={fastOnly}
-                onCheckedChange={setFastOnly}
+                onCheckedChange={(v) => {
+                  setFastOnly(v);
+                  if (v) setAllowXenova(false);
+                }}
               />
             </div>
             {!fastOnly && (
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="allow-xenova">
+                  Opt-in DistilBART download ({SUMMARIZE_MODEL_SIZE_LABEL})
+                </Label>
+                <Switch
+                  id="allow-xenova"
+                  checked={allowXenova}
+                  onCheckedChange={setAllowXenova}
+                />
+              </div>
+            )}
+            {allowXenova && !fastOnly && (
               <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                On-device model · English abstractive summary. Long PDFs are
-                chunked (map-reduce). Cancel anytime while downloading or
-                summarizing.
+                Heavy download — may crash low-memory devices. Prefer Browser
+                Summarizer API when your Chrome supports it.
               </p>
             )}
             <SoftLimitsNote />
@@ -224,7 +325,7 @@ export default function SummarizePage() {
                 ? "Working…"
                 : fastOnly
                   ? "Extract & outline"
-                  : "Summarize on-device"}
+                  : "Summarize"}
             </Button>
           </>
         }

@@ -43,7 +43,7 @@ const FAQS = [
   },
   {
     q: "Do you claim “AI” for every smart-looking tool?",
-    a: "No. On-device model badges are for OCR/Tesseract, Summarize, and Marian translate. Translate may also show Browser Translator API; Ask PDF prefers the Browser Prompt API and does not claim Xenova chat/RAG model downloads. Pattern finders, compress tips, and glossary stubs are Rules / heuristic — never marketed as AI. There is no cloud BYOK path today.",
+    a: "No. On-device model badges are for OCR/Tesseract and optional Marian translate / opt-in DistilBART. Translate prefers Browser Translator API; Summarize prefers Browser Summarizer API; Ask PDF prefers Browser Prompt API (no MiniLM/DistilBERT). Pattern finders, compress tips, and glossary stubs are Rules / heuristic — never marketed as AI. There is no cloud BYOK path today.",
   },
 ];
 

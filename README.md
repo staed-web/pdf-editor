@@ -25,7 +25,7 @@ A premium, privacy-first PDF suite that runs entirely in your browser — merge,
 | Edit | Full editor, Annotate, Crop, Watermark, Page numbers, Header/footer, Redact |
 | Security | Protect, Unlock, Flatten |
 | Sign & Forms | Sign, Fill form |
-| On-device models | OCR (Tesseract.js), Summarize, Translate (Marian / Browser Translator), Ask PDF (Browser Prompt API — no Xenova chat downloads) |
+| On-device models | OCR (Tesseract.js), Summarize (Browser Summarizer / opt-in DistilBART), Translate (Marian / Browser Translator), Ask PDF (Browser Prompt API — no MiniLM/DistilBERT) |
 
 ## Stack
 

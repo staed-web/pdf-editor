@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -26,10 +26,7 @@ import {
   type PdfFileSummary,
 } from "@/lib/pdf/process-ux";
 import {
-  CHAT_MODELS_SIZE_LABEL,
   CHAT_MAX_PAGES,
-  EMBED_MODEL_ID,
-  QA_MODEL_ID,
   pagesNeedOcr,
   type ChatIndex,
   type Citation,
@@ -55,6 +52,9 @@ export default function ChatPdfPage() {
   const [q, setQ] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [badge, setBadge] = useState("");
+  const [engineHint, setEngineHint] = useState(
+    "Checking browser AI availability…"
+  );
   const [result, setResult] = useState<{
     bytes: Uint8Array;
     name: string;
@@ -63,6 +63,22 @@ export default function ChatPdfPage() {
   const sourceBufRef = useRef<ArrayBuffer | null>(null);
   const indexRef = useRef<ChatIndex | null>(null);
   const job = useProcessJob();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { probeChatEngine } = await import("@/lib/ai/chat-ondevice");
+        const probe = await probeChatEngine();
+        if (!cancelled) setEngineHint(probe.label);
+      } catch {
+        if (!cancelled) setEngineHint("Basic search (no browser AI)");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onFiles = useCallback(
     async (fs: File[]) => {
@@ -83,7 +99,7 @@ export default function ChatPdfPage() {
         const extracted = await extractTextFromPdf(sourceBufRef.current!);
         setPages(extracted);
         toast.success(
-          `Loaded ${extracted.length} page(s) — ask to index on-device`
+          `Loaded ${extracted.length} page(s) — ask to index locally`
         );
       } catch {
         toast.error("Could not extract text");
@@ -110,14 +126,14 @@ export default function ChatPdfPage() {
     job.resetError();
   };
 
-  const exportTranscript = (msgs: Msg[]) => {
+  const exportTranscript = (msgs: Msg[], engine: string) => {
     if (!file || msgs.length === 0) return;
     const md = [
-      `# Ask PDF — on-device RAG`,
+      `# Ask PDF`,
       ``,
       `File: ${file.name}`,
-      `Models: \`${EMBED_MODEL_ID}\` (embed) + \`${QA_MODEL_ID}\` (QA)`,
-      `Badge: On-device model · text never left this device`,
+      `Engine: ${engine}`,
+      `Note: No Xenova MiniLM/DistilBERT downloads on this route.`,
       ``,
       ...msgs.flatMap((m) => {
         if (m.role === "user") return [`## Q`, m.text, ``];
@@ -125,7 +141,7 @@ export default function ChatPdfPage() {
           m.citations
             ?.map(
               (c) =>
-                `- p.${c.page} (sim ${c.score.toFixed(3)}): ${c.snippet}`
+                `- p.${c.page} (score ${c.score.toFixed(3)}): ${c.snippet}`
             )
             .join("\n") || "";
         return [
@@ -174,7 +190,7 @@ export default function ChatPdfPage() {
           if (doOcr) {
             setLabel("Scant text detected — OCR on-device…");
           } else {
-            setLabel(`Loading embed model (${CHAT_MODELS_SIZE_LABEL})…`);
+            setLabel("Building keyword index (no model download)…");
           }
           idx = await buildChatIndex(pageTexts!, {
             signal: ac.signal,
@@ -192,13 +208,9 @@ export default function ChatPdfPage() {
           if (isCancelled()) throw new DOMException("Aborted", "AbortError");
           indexRef.current = idx;
           setIndex(idx);
-          if (idx.ocrPages.length) {
-            // Refresh page texts after OCR merge is inside index only;
-            // pages state stays as pdf.js extract (index has OCR’d chunks).
-          }
         }
 
-        setLabel("Retrieving + answering on-device…");
+        setLabel("Answering…");
         const answer = await answerWithIndex(idx, question, {
           signal: ac.signal,
           onProgress: (pct, label) => {
@@ -218,7 +230,7 @@ export default function ChatPdfPage() {
           citations: answer.citations,
           method: answer.method,
           confidence: answer.confidence,
-          badge: `On-device model · ${answer.modelIds.embed} + ${answer.modelIds.qa}`,
+          badge: answer.engineLabel,
           indexMeta: idx,
         };
       } finally {
@@ -241,10 +253,13 @@ export default function ChatPdfPage() {
     ];
     setMessages(next);
     setBadge(out.badge);
+    setEngineHint(out.badge);
     setQ("");
-    exportTranscript(next);
+    exportTranscript(next, out.badge);
     toast.success(
-      out.method === "qa" ? "On-device answer ready" : "Passages retrieved"
+      out.method === "browser-prompt"
+        ? "Browser AI answer ready"
+        : "Basic search passages ready"
     );
   };
 
@@ -261,19 +276,17 @@ export default function ChatPdfPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Privacy-first RAG: embeddings + extractive QA run entirely in your
-              browser via transformers.js. PDF and text are{" "}
+              Ask questions about a PDF privately. Prefers your browser’s
+              built-in Prompt API (LanguageModel) with keyword page retrieval —
               <strong className="font-medium text-zinc-700 dark:text-zinc-300">
-                never uploaded
-              </strong>{" "}
-              on the default path. First download {CHAT_MODELS_SIZE_LABEL}, then
-              cached. Soft cap ~{CHAT_MAX_PAGES} pages.
+                {" "}
+                no MiniLM / DistilBERT downloads
+              </strong>
+              . PDF text never leaves this device. Soft cap ~{CHAT_MAX_PAGES}{" "}
+              pages.
             </p>
             <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-              On-device model ·{" "}
-              <code className="text-[10px]">{EMBED_MODEL_ID}</code> +{" "}
-              <code className="text-[10px]">{QA_MODEL_ID}</code>. Answers cite
-              page numbers from retrieved chunks.
+              {engineHint}
             </p>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="ocr-scant">
@@ -294,7 +307,7 @@ export default function ChatPdfPage() {
             {indexReady && (
               <p className="text-[11px] text-zinc-500">
                 Indexed {index!.chunks.length} chunks · {index!.pageCount}{" "}
-                pages
+                pages · keyword retrieval
                 {index!.ocrPages.length
                   ? ` · OCR p.${index!.ocrPages.join(", ")}`
                   : ""}
@@ -326,8 +339,8 @@ export default function ChatPdfPage() {
               {job.busy
                 ? "Working…"
                 : indexReady
-                  ? "Ask (on-device)"
-                  : "Index & ask (on-device)"}
+                  ? "Ask"
+                  : "Index & ask"}
             </Button>
           </>
         }
@@ -366,10 +379,14 @@ export default function ChatPdfPage() {
                         : "text-xs font-semibold text-emerald-700 dark:text-emerald-400"
                     }
                   >
-                    {m.role === "user" ? "You" : "On-device model"}
+                    {m.role === "user"
+                      ? "You"
+                      : m.method === "browser-prompt"
+                        ? "Browser AI"
+                        : "Basic search"}
                     {m.method ? ` · ${m.method}` : ""}
                     {typeof m.confidence === "number"
-                      ? ` · conf ${m.confidence.toFixed(2)}`
+                      ? ` · score ${m.confidence.toFixed(2)}`
                       : ""}
                   </p>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -382,7 +399,7 @@ export default function ChatPdfPage() {
                           <span className="font-medium text-amber-700 dark:text-amber-400">
                             p.{c.page}
                           </span>{" "}
-                          · sim {c.score.toFixed(3)} · {c.snippet}
+                          · score {c.score.toFixed(3)} · {c.snippet}
                         </li>
                       ))}
                     </ul>

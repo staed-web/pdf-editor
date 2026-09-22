@@ -995,14 +995,14 @@ export const TOOLS: ToolDef[] = [
     slug: "summarize",
     href: "/summarize",
     name: "Summarize PDF",
-    short: "On-device summary",
+    short: "Browser / heuristic summary",
     description:
-      "On-device DistilBART summary (transformers.js) with map-reduce chunking, or a Rules / heuristic extractive outline. No upload, no paid API.",
+      "Prefers Browser Summarizer API when available; otherwise Rules / heuristic outline. DistilBART (~230 MB) is opt-in only to avoid crashes. No upload, no paid API.",
     category: "ai",
     icon: Sparkles,
     accept: "application/pdf",
     featured: true,
-    honestyBadges: ["on-device-model", "rules-heuristic"],
+    honestyBadges: ["browser-summarizer-api", "rules-heuristic"],
   },
   {
     slug: "translate",
@@ -1023,12 +1023,12 @@ export const TOOLS: ToolDef[] = [
     name: "Ask PDF",
     short: "Browser Prompt API Q&A",
     description:
-      "Ask questions about a PDF privately. Prefers the browser built-in Prompt API when available. Does not download large Xenova chat/RAG model packs. No upload, no paid LLM.",
+      "Ask questions about a PDF privately. Prefers Chrome Prompt API (LanguageModel) + keyword page retrieval; falls back to Basic search (no browser AI). No MiniLM/DistilBERT downloads. No upload, no paid LLM.",
     category: "ai",
     icon: MessageSquare,
     accept: "application/pdf",
     featured: true,
-    honestyBadges: ["browser-prompt-api"],
+    honestyBadges: ["browser-prompt-api", "rules-heuristic"],
   },
 
   // —— View ——

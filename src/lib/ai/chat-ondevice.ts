@@ -1,32 +1,30 @@
 /**
- * On-device PDF chat via transformers.js RAG:
- * MiniLM embeddings + DistilBERT SQuAD extractive QA.
- * PDF/text never leave the device on the default path.
+ * Ask PDF — browser built-in AI first (Chrome Prompt API / LanguageModel),
+ * then honest keyword/TF extractive fallback. NO Xenova MiniLM/DistilBERT.
  */
 
 import {
-  chunkText,
-  loadTransformers,
+  createLanguageModelSession,
+  isLanguageModelUsable,
   throwIfAborted,
-  type ProgressCb,
-} from "./transformers-runtime";
+} from "./chrome-ai";
 
-/** Sentence embeddings (~23 MB quantized). */
-export const EMBED_MODEL_ID = "Xenova/all-MiniLM-L6-v2";
-/** Extractive QA grounded on retrieved context (~65 MB quantized). */
-export const QA_MODEL_ID = "Xenova/distilbert-base-uncased-distilled-squad";
-
-export const CHAT_MODELS_SIZE_LABEL =
-  "~90 MB total (embed + QA, one-time, cached in browser)";
-
-/** Soft caps so weak devices stay responsive. */
 export const CHAT_MAX_PAGES = 80;
 export const CHAT_MAX_CHARS = 350_000;
-export const CHAT_CHUNK_CHARS = 480;
-export const CHAT_CHUNK_OVERLAP = 60;
-export const CHAT_TOP_K = 5;
+export const CHAT_CHUNK_CHARS = 900;
+export const CHAT_CHUNK_OVERLAP = 80;
+export const CHAT_TOP_K = 6;
+/** Soft context budget for Prompt API prompts (~chars). */
+export const CHAT_CONTEXT_CHARS = 10_000;
 /** Pages with fewer chars than this are candidates for OCR. */
 export const SCANT_PAGE_CHARS = 40;
+
+/** @deprecated Removed — no Xenova chat downloads. Kept so old imports don't break builds mid-edit. */
+export const EMBED_MODEL_ID = "";
+/** @deprecated Removed — no Xenova chat downloads. */
+export const QA_MODEL_ID = "";
+/** @deprecated No chat model download on this route. */
+export const CHAT_MODELS_SIZE_LABEL = "no download (browser AI or basic search)";
 
 export type PageText = { page: number; text: string };
 
@@ -34,7 +32,6 @@ export type DocChunk = {
   id: number;
   page: number;
   text: string;
-  embedding: Float32Array;
 };
 
 export type ChatIndex = {
@@ -43,7 +40,8 @@ export type ChatIndex = {
   charCount: number;
   ocrPages: number[];
   truncated: boolean;
-  embedModelId: string;
+  /** Always keyword — never MiniLM. */
+  retrieval: "keyword";
 };
 
 export type Citation = {
@@ -52,92 +50,45 @@ export type Citation = {
   score: number;
 };
 
+export type ChatAnswerMethod = "browser-prompt" | "basic-search";
+
 export type ChatAnswer = {
   answer: string;
   citations: Citation[];
   confidence: number;
-  method: "qa" | "retrieval-fallback";
-  modelIds: { embed: string; qa: string };
+  method: ChatAnswerMethod;
+  /** Human-readable engine label for badges/transcript. */
+  engineLabel: string;
 };
 
 export type ChatProgress = (pct: number, label: string) => void;
 
-type Embedder = (
-  texts: string | string[],
-  opts?: { pooling?: string; normalize?: boolean }
-) => Promise<{ data: Float32Array | number[]; dims: number[]; tolist?: () => number[][] }>;
-
-type QaFn = (
-  question: string,
-  context: string
-) => Promise<{ answer: string; score: number; start?: number; end?: number }>;
-
-let embedderPromise: Promise<Embedder> | null = null;
-let qaPromise: Promise<QaFn> | null = null;
-
-function progressBridge(
-  onProgress: ProgressCb | undefined,
-  signal: AbortSignal | undefined
-): ProgressCb {
-  return (info) => {
-    if (signal?.aborted) return;
-    onProgress?.(info);
-  };
-}
-
-async function getEmbedder(
-  onProgress?: ProgressCb,
-  signal?: AbortSignal
-): Promise<Embedder> {
-  throwIfAborted(signal);
-  if (embedderPromise) return embedderPromise;
-  const { pipeline } = await loadTransformers();
-  embedderPromise = pipeline("feature-extraction", EMBED_MODEL_ID, {
-    quantized: true,
-    progress_callback: progressBridge(onProgress, signal),
-  }) as Promise<Embedder>;
-  try {
-    return await embedderPromise;
-  } catch (e) {
-    embedderPromise = null;
-    throw e;
-  }
-}
-
-async function getQa(
-  onProgress?: ProgressCb,
-  signal?: AbortSignal
-): Promise<QaFn> {
-  throwIfAborted(signal);
-  if (qaPromise) return qaPromise;
-  const { pipeline } = await loadTransformers();
-  qaPromise = pipeline("question-answering", QA_MODEL_ID, {
-    quantized: true,
-    progress_callback: progressBridge(onProgress, signal),
-  }) as Promise<QaFn>;
-  try {
-    return await qaPromise;
-  } catch (e) {
-    qaPromise = null;
-    throw e;
-  }
-}
-
-function toFloat32(data: Float32Array | number[]): Float32Array {
-  return data instanceof Float32Array ? data : Float32Array.from(data);
-}
-
-function cosine(a: Float32Array, b: Float32Array): number {
-  const n = Math.min(a.length, b.length);
-  let dot = 0;
-  for (let i = 0; i < n; i++) dot += a[i] * b[i];
-  return dot; // embeddings are L2-normalized
-}
+const STOP = new Set([
+  "a","an","the","and","or","but","if","in","on","at","to","for","of","as",
+  "is","are","was","were","be","been","being","it","this","that","these",
+  "those","with","from","by","into","about","what","which","who","whom",
+  "how","when","where","why","do","does","did","can","could","should",
+  "would","will","shall","may","might","must","have","has","had","not",
+  "no","yes","you","your","we","our","they","their","i","me","my",
+]);
 
 function snippet(text: string, max = 180): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   return t.slice(0, max - 1).trimEnd() + "…";
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9\u00c0-\u024f\u0900-\u097f]+/i)
+    .filter((t) => t.length > 1 && !STOP.has(t));
+}
+
+function termFreq(tokens: string[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const t of tokens) m.set(t, (m.get(t) || 0) + 1);
+  return m;
 }
 
 /** Split page texts into overlapping chunks that retain page numbers. */
@@ -154,8 +105,23 @@ export function chunkPages(
       out.push({ page: p.page, text: cleaned });
       continue;
     }
-    for (const c of chunkText(cleaned, maxChars, overlap)) {
-      out.push({ page: p.page, text: c });
+    let i = 0;
+    while (i < cleaned.length) {
+      let end = Math.min(i + maxChars, cleaned.length);
+      if (end < cleaned.length) {
+        const slice = cleaned.slice(i, end);
+        const lastStop = Math.max(
+          slice.lastIndexOf(". "),
+          slice.lastIndexOf("? "),
+          slice.lastIndexOf("! "),
+          slice.lastIndexOf(" ")
+        );
+        if (lastStop > maxChars * 0.4) end = i + lastStop + 1;
+      }
+      const piece = cleaned.slice(i, end).trim();
+      if (piece) out.push({ page: p.page, text: piece });
+      if (end >= cleaned.length) break;
+      i = Math.max(end - overlap, i + 1);
     }
   }
   return out;
@@ -163,7 +129,6 @@ export function chunkPages(
 
 /**
  * OCR only pages with scant extractable text (lazy Tesseract).
- * Reuses renderPdfPages + tesseract.js; does not touch the dedicated OCR tool.
  */
 export async function ocrScantPages(
   source: ArrayBuffer,
@@ -189,15 +154,12 @@ export async function ocrScantPages(
   const tesseract = await import("tesseract.js");
   throwIfAborted(signal);
 
-  // Render full doc once (same path as OCR tool); only recognize scant pages.
   onProgress?.(6, "Rendering pages for OCR…");
   const rendered = await renderPdfPages(source, { format: "png", scale: 1.5 });
   throwIfAborted(signal);
 
   const worker = await tesseract.createWorker(lang, 1, {
-    logger: () => {
-      /* keep quiet; we drive progress by page */
-    },
+    logger: () => {},
   });
 
   const byPage = new Map(pages.map((p) => [p.page, { ...p }]));
@@ -236,41 +198,91 @@ export function pagesNeedOcr(pages: PageText[]): boolean {
   return scant >= Math.max(1, Math.ceil(pages.length * 0.3));
 }
 
-async function embedTexts(
-  embedder: Embedder,
-  texts: string[],
-  signal?: AbortSignal
-): Promise<Float32Array[]> {
-  const out: Float32Array[] = [];
-  const batchSize = 8;
-  for (let i = 0; i < texts.length; i += batchSize) {
-    throwIfAborted(signal);
-    const batch = texts.slice(i, i + batchSize);
-    const tensor = await embedder(batch, { pooling: "mean", normalize: true });
-    const dims = tensor.dims;
-    // [batch, hidden] or [hidden] for single
-    if (dims.length === 1) {
-      out.push(toFloat32(tensor.data as Float32Array | number[]));
-    } else if (dims.length === 2) {
-      const [b, h] = dims;
-      const data = toFloat32(tensor.data as Float32Array | number[]);
-      for (let j = 0; j < b; j++) {
-        out.push(data.slice(j * h, (j + 1) * h));
-      }
-    } else {
-      // fallback: try tolist
-      const list = tensor.tolist?.() ?? [];
-      for (const row of list) {
-        out.push(Float32Array.from(row));
-      }
+function scoreChunk(queryTokens: string[], chunkText: string): number {
+  if (queryTokens.length === 0) return 0;
+  const tf = termFreq(tokenize(chunkText));
+  let score = 0;
+  const unique = new Set(queryTokens);
+  for (const t of unique) {
+    const f = tf.get(t) || 0;
+    if (f > 0) score += 1 + Math.log(1 + f);
+  }
+  // Phrase bonus: consecutive query words
+  const lower = chunkText.toLowerCase();
+  for (let i = 0; i < queryTokens.length - 1; i++) {
+    const bigram = `${queryTokens[i]} ${queryTokens[i + 1]}`;
+    if (lower.includes(bigram)) score += 1.5;
+  }
+  return score;
+}
+
+export function retrieveTopChunks(
+  index: ChatIndex,
+  question: string,
+  topK = CHAT_TOP_K
+): { chunk: DocChunk; score: number }[] {
+  const qTokens = tokenize(question);
+  const scored = index.chunks
+    .map((c) => ({ chunk: c, score: scoreChunk(qTokens, c.text) }))
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (scored.length >= topK) return scored.slice(0, topK);
+
+  // If keyword miss, fall back to first pages / window around middle
+  if (scored.length === 0) {
+    return index.chunks.slice(0, topK).map((c, i) => ({
+      chunk: c,
+      score: 0.01 * (topK - i),
+    }));
+  }
+  return scored.slice(0, topK);
+}
+
+function buildContextWindow(
+  scored: { chunk: DocChunk; score: number }[],
+  budget = CHAT_CONTEXT_CHARS
+): { context: string; citations: Citation[] } {
+  const citations: Citation[] = [];
+  const parts: string[] = [];
+  let used = 0;
+  const seenPages = new Set<number>();
+
+  for (const s of scored) {
+    const header = `[Page ${s.chunk.page}] `;
+    const room = budget - used - header.length;
+    if (room < 80) break;
+    const body =
+      s.chunk.text.length > room
+        ? s.chunk.text.slice(0, room - 1) + "…"
+        : s.chunk.text;
+    parts.push(header + body);
+    used += header.length + body.length + 2;
+    if (!seenPages.has(s.chunk.page) || citations.length < 5) {
+      citations.push({
+        page: s.chunk.page,
+        snippet: snippet(s.chunk.text),
+        score: s.score,
+      });
+      seenPages.add(s.chunk.page);
     }
   }
-  return out;
+
+  // Dedupe citations by page (keep best score)
+  const byPage = new Map<number, Citation>();
+  for (const c of citations) {
+    const prev = byPage.get(c.page);
+    if (!prev || c.score > prev.score) byPage.set(c.page, c);
+  }
+
+  return {
+    context: parts.join("\n\n"),
+    citations: Array.from(byPage.values()).slice(0, 5),
+  };
 }
 
 /**
- * Build an in-memory embedding index for a PDF's page texts.
- * Call once after extract (+ optional OCR); reuse across questions.
+ * Build a lightweight keyword index (no embeddings, no model download).
  */
 export async function buildChatIndex(
   pagesIn: PageText[],
@@ -321,6 +333,7 @@ export async function buildChatIndex(
     charCount = kept;
   }
 
+  onProgress?.(40, "Building keyword index (no model download)…");
   const rawChunks = chunkPages(pages);
   if (rawChunks.length === 0) {
     throw new Error(
@@ -328,60 +341,44 @@ export async function buildChatIndex(
     );
   }
 
-  onProgress?.(28, `Loading embedding model (${EMBED_MODEL_ID})…`);
-
-  const downloadPct = (info: {
-    status: string;
-    progress?: number;
-    file?: string;
-  }) => {
-    throwIfAborted(signal);
-    if (typeof info.progress === "number") {
-      const pct = 28 + Math.min(30, Math.round(info.progress * 0.3));
-      onProgress?.(
-        pct,
-        info.file
-          ? `Downloading embed model… ${Math.round(info.progress)}%`
-          : `Loading embed model… ${Math.round(info.progress)}%`
-      );
-    } else if (info.status === "ready" || info.status === "done") {
-      onProgress?.(58, "Embed model ready — indexing…");
-    } else {
-      onProgress?.(30, info.status || "Loading embed model…");
-    }
-  };
-
-  const embedder = await getEmbedder(downloadPct, signal);
-  throwIfAborted(signal);
-  onProgress?.(60, `Embedding ${rawChunks.length} chunk(s)…`);
-
-  const vectors = await embedTexts(
-    embedder,
-    rawChunks.map((c) => c.text),
-    signal
-  );
-
   const chunks: DocChunk[] = rawChunks.map((c, i) => ({
     id: i,
     page: c.page,
     text: c.text,
-    embedding: vectors[i] || new Float32Array(0),
   }));
 
-  onProgress?.(78, "Index ready");
+  onProgress?.(70, "Index ready");
   return {
     chunks,
     pageCount: pages.length,
     charCount,
     ocrPages,
     truncated,
-    embedModelId: EMBED_MODEL_ID,
+    retrieval: "keyword",
+  };
+}
+
+function basicSearchAnswer(
+  scored: { chunk: DocChunk; score: number }[],
+  citations: Citation[]
+): ChatAnswer {
+  const lines = scored.slice(0, 4).map(
+    (s) => `(p.${s.chunk.page}) ${snippet(s.chunk.text, 260)}`
+  );
+  return {
+    answer: lines.length
+      ? `Basic search (no browser AI) — closest passages:\n\n${lines.join("\n\n")}`
+      : "No matching passages found. Try rephrasing, or OCR if this is a scan.",
+    citations,
+    confidence: scored[0]?.score ? Math.min(1, scored[0].score / 8) : 0,
+    method: "basic-search",
+    engineLabel: "Basic search (no browser AI)",
   };
 }
 
 /**
- * Retrieve top chunks and answer with DistilBERT SQuAD (per-chunk, pick best).
- * Falls back to cited retrieval snippets if QA confidence is too low.
+ * Retrieve relevant pages via keyword/TF, then answer with Chrome Prompt API
+ * when available. Otherwise honest extractive snippet fallback — never Xenova.
  */
 export async function answerWithIndex(
   index: ChatIndex,
@@ -394,120 +391,72 @@ export async function answerWithIndex(
   const { signal, onProgress } = opts;
   throwIfAborted(signal);
   const q = question.replace(/\s+/g, " ").trim();
-  if (!q) {
-    throw new Error("Enter a question");
-  }
+  if (!q) throw new Error("Enter a question");
   if (index.chunks.length === 0) {
     throw new Error("No indexed chunks — load a PDF first");
   }
 
-  onProgress?.(80, "Embedding question…");
-  const embedder = await getEmbedder(undefined, signal);
-  const [qVec] = await embedTexts(embedder, [q], signal);
+  onProgress?.(75, "Finding relevant pages…");
+  const scored = retrieveTopChunks(index, q);
+  const { context, citations } = buildContextWindow(scored);
 
-  const scored = index.chunks
-    .map((c) => ({
-      chunk: c,
-      score: c.embedding.length ? cosine(qVec, c.embedding) : 0,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, CHAT_TOP_K);
-
-  const citations: Citation[] = scored.map((s) => ({
-    page: s.chunk.page,
-    snippet: snippet(s.chunk.text),
-    score: s.score,
-  }));
-
-  onProgress?.(84, `Loading QA model (${QA_MODEL_ID})…`);
-
-  const qaDownload = (info: {
-    status: string;
-    progress?: number;
-    file?: string;
-  }) => {
-    throwIfAborted(signal);
-    if (typeof info.progress === "number") {
-      const pct = 84 + Math.min(10, Math.round(info.progress * 0.1));
-      onProgress?.(
-        pct,
-        info.file
-          ? `Downloading QA model… ${Math.round(info.progress)}%`
-          : `Loading QA model… ${Math.round(info.progress)}%`
-      );
-    }
-  };
-
-  const qa = await getQa(qaDownload, signal);
-  throwIfAborted(signal);
-  onProgress?.(94, "Answering from top passages…");
-
-  let best = { answer: "", score: 0, page: scored[0]?.chunk.page ?? 1 };
-
-  for (let i = 0; i < scored.length; i++) {
-    throwIfAborted(signal);
-    const { chunk } = scored[i];
-    // DistilBERT max ~512 tokens — keep context tight
-    const context = chunk.text.slice(0, 1600);
-    try {
-      const out = await qa(q, context);
-      const ans = (out.answer || "").trim();
-      const score = typeof out.score === "number" ? out.score : 0;
-      if (ans && score >= best.score) {
-        best = { answer: ans, score, page: chunk.page };
-      }
-    } catch {
-      /* try next chunk */
-    }
+  const usable = await isLanguageModelUsable();
+  if (!usable) {
+    onProgress?.(100, "Basic search ready");
+    return basicSearchAnswer(scored, citations);
   }
 
-  const modelIds = { embed: EMBED_MODEL_ID, qa: QA_MODEL_ID };
+  onProgress?.(80, "Using your browser’s built-in on-device AI…");
+  const session = await createLanguageModelSession({
+    signal,
+    onProgress,
+    systemPrompt:
+      "You answer questions using ONLY the provided PDF excerpts. " +
+      "Cite page numbers like (p.N). If the excerpts do not contain the answer, say so clearly. " +
+      "Be concise. Do not invent facts outside the excerpts.",
+  });
 
-  // Confidence floor — below this, prefer cited retrieval over a weak span
-  if (best.answer && best.score >= 0.08) {
-    // Ensure the winning page is first in citations
-    const ordered = [
-      ...citations.filter((c) => c.page === best.page),
-      ...citations.filter((c) => c.page !== best.page),
-    ];
-    // Dedupe by page keeping best snippet score
-    const byPage = new Map<number, Citation>();
-    for (const c of ordered) {
-      const prev = byPage.get(c.page);
-      if (!prev || c.score > prev.score) byPage.set(c.page, c);
-    }
-    const cites = Array.from(byPage.values()).slice(0, 5);
+  if (!session) {
+    onProgress?.(100, "Basic search ready");
+    return basicSearchAnswer(scored, citations);
+  }
 
+  try {
+    throwIfAborted(signal);
+    onProgress?.(90, "Prompting browser AI with page context…");
+    const prompt = [
+      "PDF excerpts:",
+      context || "(no excerpts)",
+      "",
+      `Question: ${q}`,
+      "",
+      "Answer based only on the excerpts. Include page citations like (p.3).",
+    ].join("\n");
+
+    const raw = (await session.prompt(prompt, { signal })).trim();
     onProgress?.(100, "Answer ready");
     return {
-      answer: `${best.answer} (p.${best.page})`,
-      citations: cites,
-      confidence: best.score,
-      method: "qa",
-      modelIds,
+      answer:
+        raw ||
+        "The browser AI returned an empty answer. Try rephrasing your question.",
+      citations,
+      confidence: scored[0]?.score ? Math.min(1, 0.5 + scored[0].score / 10) : 0.5,
+      method: "browser-prompt",
+      engineLabel: "Uses your browser’s built-in on-device AI",
     };
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") throw e;
+    onProgress?.(100, "Basic search ready");
+    return basicSearchAnswer(scored, citations);
+  } finally {
+    try {
+      session.destroy?.();
+    } catch {
+      /* ignore */
+    }
   }
-
-  // Retrieval fallback — still semantic, still cited
-  const lines = scored.map(
-    (s) => `(p.${s.chunk.page}) ${snippet(s.chunk.text, 240)}`
-  );
-  onProgress?.(100, "Passages ready");
-  return {
-    answer: lines.length
-      ? `Closest passages (on-device retrieval; QA confidence was low):\n\n${lines.join("\n\n")}`
-      : "No matching passages found. Try rephrasing, or OCR if this is a scan.",
-    citations,
-    confidence: scored[0]?.score ?? 0,
-    method: "retrieval-fallback",
-    modelIds,
-  };
 }
 
-/**
- * One-shot: build index (optional) + answer. Prefer buildChatIndex once then
- * answerWithIndex for multi-turn chat.
- */
 export async function chatPdfOnDevice(
   pages: PageText[],
   question: string,
@@ -532,4 +481,18 @@ export async function chatPdfOnDevice(
     onProgress: opts.onProgress,
   });
   return { answer, index };
+}
+
+/** Probe Prompt API without downloading models when possible. */
+export async function probeChatEngine(): Promise<{
+  browserAi: boolean;
+  label: string;
+}> {
+  const browserAi = await isLanguageModelUsable();
+  return {
+    browserAi,
+    label: browserAi
+      ? "Uses your browser’s built-in on-device AI"
+      : "Basic search (no browser AI)",
+  };
 }
