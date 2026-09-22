@@ -77,6 +77,7 @@ import {
   ImageDown,
   FileSearch,
   FolderKanban,
+  Workflow,
 } from "lucide-react";
 
 export type ToolCategory =
@@ -1006,6 +1007,19 @@ export const TOOLS: ToolDef[] = [
 
   // —— Batch ——
   {
+    slug: "workflows",
+    href: "/workflows",
+    name: "Action Wizard",
+    short: "Saved workflows",
+    description:
+      "Save named sequences of local tools (OCR → Compress → Protect, and more), run on one file, or reuse from Batch. Stored in IndexedDB — never uploaded.",
+    category: "batch",
+    icon: Workflow,
+    featured: true,
+    accept: "application/pdf",
+  },
+
+  {
     slug: "batch",
     href: "/batch",
     name: "Batch workspace",
@@ -1047,6 +1061,7 @@ export function featuredTools() {
 export function homeSpotlightTools() {
   const order = [
     "batch",
+    "workflows",
     "merge",
     "split",
     "compress",

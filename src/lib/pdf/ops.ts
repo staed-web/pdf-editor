@@ -595,7 +595,14 @@ export async function renderPdfPages(
 /** Compress by re-rendering pages as JPEG with quality + max-edge downsample */
 export async function compressPdf(
   source: ArrayBuffer,
-  quality: "low" | "medium" | "high" = "medium"
+  quality:
+    | "low"
+    | "medium"
+    | "high"
+    | "web"
+    | "balanced"
+    | "max"
+    | "print" = "medium"
 ): Promise<{
   bytes: Uint8Array;
   originalSize: number;
@@ -603,13 +610,12 @@ export async function compressPdf(
   pageCount: number;
   scaleUsed: number;
   jpegQuality: number;
+  presetId: string;
+  linearized: boolean;
 }> {
-  const presets = {
-    low: { q: 0.38, scale: 1.0, maxEdge: 1280 },
-    medium: { q: 0.58, scale: 1.35, maxEdge: 1600 },
-    high: { q: 0.78, scale: 1.7, maxEdge: 2200 },
-  } as const;
-  const { q, scale, maxEdge } = presets[quality];
+  const { resolveCompressPreset } = await import("./compress-presets");
+  const preset = resolveCompressPreset(quality);
+  const { q, scale, maxEdge } = preset;
   ensurePdfWorker();
   const doc = await loadPdfDocument(source.slice(0));
   const out = await PDFDocument.create();
@@ -627,8 +633,8 @@ export async function compressPdf(
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport }).promise;
-    // Mild sharpen via contrast for low quality scans
-    if (quality === "low") {
+    // Mild contrast boost for aggressive shrink presets
+    if (preset.id === "max" || preset.id === "web") {
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = img.data;
       for (let p = 0; p < d.length; p += 4) {
@@ -654,7 +660,21 @@ export async function compressPdf(
     page.cleanup();
   }
   doc.destroy();
-  const bytes = await out.save({ useObjectStreams: true });
+  let bytes = await out.save({ useObjectStreams: true });
+  let linearized = false;
+  if (preset.linearize) {
+    try {
+      const { optimizeStructure } = await import("./extra-ops");
+      const buf = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength
+      ) as ArrayBuffer;
+      bytes = await optimizeStructure(buf);
+      linearized = true;
+    } catch {
+      /* structure rewrite is best-effort */
+    }
+  }
   return {
     bytes,
     originalSize: source.byteLength,
@@ -662,6 +682,8 @@ export async function compressPdf(
     pageCount: out.getPageCount(),
     scaleUsed: scale,
     jpegQuality: q,
+    presetId: preset.id,
+    linearized,
   };
 }
 

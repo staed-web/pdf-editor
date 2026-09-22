@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CheckCircle2,
   Circle,
@@ -276,7 +277,12 @@ export default function BatchPage() {
           <>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               100% local — files never leave this device. Pick one operation for
-              the whole queue, then download a ZIP when finished.
+              the whole queue, then download a ZIP when finished. Multi-step
+              sequences on one file:{" "}
+              <Link href="/workflows" className="underline underline-offset-2">
+                Action Wizard
+              </Link>
+              .
             </p>
             <div className="space-y-2">
               <Label>Operation</Label>
