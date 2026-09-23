@@ -197,156 +197,168 @@ export function TopToolbar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-12 shrink-0 items-center gap-1 overflow-x-auto overscroll-x-contain border-b border-[var(--border)] bg-[var(--card)]/95 px-2 backdrop-blur no-scrollbar safe-px">
-        <div className="flex items-center gap-1.5 pr-2">
-          <a href="/" className="flex items-center gap-1.5">
+      <header className="flex h-12 shrink-0 items-center border-b border-[var(--border)] bg-[var(--card)]/95 backdrop-blur safe-px">
+        {/* Brand — logo always links home; wordmark only on wide screens */}
+        <div className="flex shrink-0 items-center gap-1.5 px-2">
+          <a
+            href="/"
+            className="flex items-center gap-1.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+            aria-label="InstantPDFEdit home"
+          >
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/20">
               <span className="text-xs font-black text-zinc-950">I</span>
             </div>
-            <div className="hidden min-w-0 flex-col sm:flex">
+            <div className="hidden min-w-0 flex-col lg:flex">
               <span className="text-[11px] font-semibold tracking-wide text-amber-600 dark:text-amber-400/90">
                 InstantPDFEdit
               </span>
-              <span className="max-w-[180px] truncate text-xs text-zinc-500 dark:text-zinc-300">
+              <span className="max-w-[160px] truncate text-xs text-zinc-500 dark:text-zinc-300">
                 {fileName || "PDF Editor"}
               </span>
             </div>
           </a>
         </div>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        {/* Primary tools — scroll on narrow widths so right actions stay visible */}
+        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain no-scrollbar px-1">
+          <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 
-        <ToolBtn tip="Open PDF" onClick={() => fileRef.current?.click()}>
-          <FileUp />
-        </ToolBtn>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void openFile(f);
-            e.target.value = "";
-          }}
-        />
-        <ToolBtn tip="Export" disabled={!pdfBytes || exporting} onClick={() => void onExport()}>
-          <Download />
-        </ToolBtn>
-        <ToolBtn
-          tip="Export comments (TXT)"
-          disabled={!annotations.length}
-          onClick={() => void onExportComments("txt")}
-        >
-          <FileSpreadsheet />
-        </ToolBtn>
-        <ToolBtn tip="Print" disabled={!pdfBytes} onClick={() => void onPrint()}>
-          <Printer />
-        </ToolBtn>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        <ToolBtn tip="Undo (⌘Z)" disabled={!past.length} onClick={undo}>
-          <Undo2 />
-        </ToolBtn>
-        <ToolBtn tip="Redo (⌘⇧Z)" disabled={!future.length} onClick={redo}>
-          <Redo2 />
-        </ToolBtn>
-        <ToolBtn
-          tip="Delete selected"
-          disabled={!selectedIds.length}
-          onClick={deleteSelected}
-        >
-          <Trash2 />
-        </ToolBtn>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        <ToolBtn tip="Zoom out" onClick={() => setZoom(zoom / 1.15)}>
-          <ZoomOut />
-        </ToolBtn>
-        <button
-          className="min-w-[52px] rounded-md px-1.5 py-1 text-xs tabular-nums text-zinc-300 hover:bg-zinc-800"
-          onClick={() => setZoom(1)}
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <ToolBtn tip="Zoom in" onClick={() => setZoom(zoom * 1.15)}>
-          <ZoomIn />
-        </ToolBtn>
-        <ToolBtn tip="Fit width" onClick={() => setZoom(zoom, "fit-width")}>
-          <Maximize2 />
-        </ToolBtn>
-        <ToolBtn tip="Fit page" onClick={() => setZoom(zoom, "fit-page")}>
-          <Maximize2 className="rotate-90" />
-        </ToolBtn>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        <ToolBtn
-          tip="Previous page"
-          disabled={currentPage <= 0}
-          onClick={() => setCurrentPage(currentPage - 1)}
-        >
-          <ChevronLeft />
-        </ToolBtn>
-        <div className="flex items-center gap-1 text-xs text-zinc-400">
-          <Input
-            className="h-7 w-12 px-1 text-center"
-            value={pages.length ? currentPage + 1 : 0}
+          <ToolBtn tip="Open PDF" onClick={() => fileRef.current?.click()}>
+            <FileUp />
+          </ToolBtn>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
             onChange={(e) => {
-              const n = parseInt(e.target.value, 10);
-              if (!Number.isNaN(n)) setCurrentPage(n - 1);
+              const f = e.target.files?.[0];
+              if (f) void openFile(f);
+              e.target.value = "";
             }}
           />
-          <span>/ {pages.length || 0}</span>
+          <ToolBtn tip="Export" disabled={!pdfBytes || exporting} onClick={() => void onExport()}>
+            <Download />
+          </ToolBtn>
+          <ToolBtn
+            tip="Export comments (TXT)"
+            disabled={!annotations.length}
+            onClick={() => void onExportComments("txt")}
+            className="hidden sm:inline-flex"
+          >
+            <FileSpreadsheet />
+          </ToolBtn>
+          <ToolBtn tip="Print" disabled={!pdfBytes} onClick={() => void onPrint()} className="hidden sm:inline-flex">
+            <Printer />
+          </ToolBtn>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          <ToolBtn tip="Undo (⌘Z)" disabled={!past.length} onClick={undo}>
+            <Undo2 />
+          </ToolBtn>
+          <ToolBtn tip="Redo (⌘⇧Z)" disabled={!future.length} onClick={redo}>
+            <Redo2 />
+          </ToolBtn>
+          <ToolBtn
+            tip="Delete selected"
+            disabled={!selectedIds.length}
+            onClick={deleteSelected}
+            className="hidden sm:inline-flex"
+          >
+            <Trash2 />
+          </ToolBtn>
+
+          <Separator orientation="vertical" className="mx-1 hidden h-6 md:block" />
+
+          <ToolBtn tip="Zoom out" onClick={() => setZoom(zoom / 1.15)} className="hidden md:inline-flex">
+            <ZoomOut />
+          </ToolBtn>
+          <button
+            className="hidden min-w-[52px] rounded-md px-1.5 py-1 text-xs tabular-nums text-zinc-300 hover:bg-zinc-800 md:inline-block"
+            onClick={() => setZoom(1)}
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <ToolBtn tip="Zoom in" onClick={() => setZoom(zoom * 1.15)} className="hidden md:inline-flex">
+            <ZoomIn />
+          </ToolBtn>
+          <ToolBtn tip="Fit width" onClick={() => setZoom(zoom, "fit-width")} className="hidden lg:inline-flex">
+            <Maximize2 />
+          </ToolBtn>
+          <ToolBtn tip="Fit page" onClick={() => setZoom(zoom, "fit-page")} className="hidden lg:inline-flex">
+            <Maximize2 className="rotate-90" />
+          </ToolBtn>
+
+          <Separator orientation="vertical" className="mx-1 hidden h-6 md:block" />
+
+          <ToolBtn
+            tip="Previous page"
+            disabled={currentPage <= 0}
+            onClick={() => setCurrentPage(currentPage - 1)}
+            className="hidden md:inline-flex"
+          >
+            <ChevronLeft />
+          </ToolBtn>
+          <div className="hidden items-center gap-1 text-xs text-zinc-400 md:flex">
+            <Input
+              className="h-7 w-12 px-1 text-center"
+              value={pages.length ? currentPage + 1 : 0}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (!Number.isNaN(n)) setCurrentPage(n - 1);
+              }}
+            />
+            <span>/ {pages.length || 0}</span>
+          </div>
+          <ToolBtn
+            tip="Next page"
+            disabled={currentPage >= pages.length - 1}
+            onClick={() => setCurrentPage(currentPage + 1)}
+            className="hidden md:inline-flex"
+          >
+            <ChevronRight />
+          </ToolBtn>
+
+          <div className="hidden items-center gap-0.5 lg:flex">
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            <ToolBtn tip="Rotate page" disabled={!pages.length} onClick={() => rotatePage(currentPage, 90)}>
+              <RotateCw />
+            </ToolBtn>
+            <ToolBtn tip="Delete page" disabled={pages.length <= 1} onClick={() => deletePage(currentPage)}>
+              <Trash2 />
+            </ToolBtn>
+            <ToolBtn tip="Insert blank" disabled={!pages.length} onClick={() => insertBlankPage(currentPage + 1)}>
+              <FilePlus />
+            </ToolBtn>
+            <ToolBtn tip="Merge PDF" disabled={!pdfBytes} onClick={() => mergeRef.current?.click()}>
+              <Combine />
+            </ToolBtn>
+            <input
+              ref={mergeRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onMerge(f);
+                e.target.value = "";
+              }}
+            />
+            <ToolBtn tip="Extract page" disabled={!pdfBytes} onClick={() => void onExtract()}>
+              <Scissors />
+            </ToolBtn>
+          </div>
         </div>
-        <ToolBtn
-          tip="Next page"
-          disabled={currentPage >= pages.length - 1}
-          onClick={() => setCurrentPage(currentPage + 1)}
-        >
-          <ChevronRight />
-        </ToolBtn>
 
-<div className="hidden items-center gap-1 md:flex">
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        <ToolBtn tip="Rotate page" disabled={!pages.length} onClick={() => rotatePage(currentPage, 90)}>
-          <RotateCw />
-        </ToolBtn>
-        <ToolBtn tip="Delete page" disabled={pages.length <= 1} onClick={() => deletePage(currentPage)}>
-          <Trash2 />
-        </ToolBtn>
-        <ToolBtn tip="Insert blank" disabled={!pages.length} onClick={() => insertBlankPage(currentPage + 1)}>
-          <FilePlus />
-        </ToolBtn>
-        <ToolBtn tip="Merge PDF" disabled={!pdfBytes} onClick={() => mergeRef.current?.click()}>
-          <Combine />
-        </ToolBtn>
-        <input
-          ref={mergeRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onMerge(f);
-            e.target.value = "";
-          }}
-        />
-        <ToolBtn tip="Extract page" disabled={!pdfBytes} onClick={() => void onExtract()}>
-          <Scissors />
-        </ToolBtn>
-        </div>
-
-        <div className="ml-auto flex items-center gap-1">
+        {/* Right actions stay pinned */}
+        <div className="flex shrink-0 items-center gap-0.5 border-l border-[var(--border)] px-1.5 pl-2">
           {searchOpen ? (
-            <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5">
-              <Search className="h-3.5 w-3.5 text-zinc-500" />
+            <div className="flex max-w-[min(100vw-8rem,18rem)] items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5">
+              <Search className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
               <input
                 autoFocus
-                className="h-7 w-36 bg-transparent text-xs text-foreground outline-none"
+                className="h-7 min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none"
                 placeholder="Search text…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -385,7 +397,7 @@ export function TopToolbar() {
               <Search />
             </ToolBtn>
           )}
-          <ToolBtn tip="Shortcuts" onClick={() => setDialog("shortcutsOpen", true)}>
+          <ToolBtn tip="Shortcuts" onClick={() => setDialog("shortcutsOpen", true)} className="hidden sm:inline-flex">
             <Keyboard />
           </ToolBtn>
           <ToolBtn tip={`Theme: ${themeMode}`} onClick={cycleTheme}>

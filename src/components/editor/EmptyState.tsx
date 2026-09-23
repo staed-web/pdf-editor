@@ -73,7 +73,7 @@ export function EmptyState() {
   };
 
   return (
-    <div className="relative flex h-full flex-1 flex-col items-center justify-center overflow-hidden px-6">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto overscroll-contain px-6 py-8 sm:justify-center sm:py-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08),_transparent_60%)]" />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
