@@ -27,7 +27,7 @@ import {
 const FAQS = [
   {
     q: "Do my files leave my device?",
-    a: "No. InstantPDFEdit processes PDFs entirely in your browser with pdf.js and pdf-lib. Nothing is uploaded to our servers for the core tools.",
+    a: "No. InstantPDFEdit processes PDFs entirely in your browser. Nothing is uploaded to our servers for the core tools.",
   },
   {
     q: "Is InstantPDFEdit free?",

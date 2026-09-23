@@ -31,7 +31,7 @@ export default function Page() {
     <MarketingShell>
       <ToolShell tool={tool} options={
         <>
-          <p className="text-xs text-zinc-500">Free local approximation from pdf.js text positions — not pixel-perfect layout.</p>
+          <p className="text-xs text-zinc-500">Free local approximation from text positions — not a pixel-perfect layout.</p>
           <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Working…":"Export HTML"}</Button>
         </>
       }>

@@ -78,8 +78,8 @@ export default function ExportAnnotationsPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Lists native PDF comments, highlights, and stamps (pdf.js), then
-              exports TXT / CSV / PDF. For marks you add in the editor, use{" "}
+              Lists native PDF comments, highlights, and stamps, then exports
+              TXT / CSV / PDF. For marks you add in the editor, use{" "}
               <Link href="/edit" className="underline">
                 Export comments
               </Link>{" "}

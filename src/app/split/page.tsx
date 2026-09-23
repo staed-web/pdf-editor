@@ -75,7 +75,7 @@ export default function SplitPage() {
           .filter(Boolean)
           .map((r) => {
             const m = r.match(/^(\d+)(?:-(\d+))?$/);
-            if (!m) throw new Error(`Bad range: ${r}`);
+            if (!m) throw new Error(`Invalid page range: ${r}`);
             const start = Number(m[1]);
             const end = Number(m[2] || m[1]);
             return { start, end };

@@ -20,9 +20,9 @@ export default function AboutPage() {
       <p>
         Document tools should feel instant and respectful. Too many “free PDF”
         sites quietly upload everything to a cloud queue. We built InstantPDFEdit
-        so the default path is <strong>client-side processing</strong>: your
-        bytes stay on your device while pdf.js, pdf-lib, and related libraries
-        do the work in-page.
+        so the default path is <strong>processing on your device</strong>: your
+        file bytes stay in the browser tab and are never uploaded to our
+        servers for core tools.
       </p>
 
       <h2>What you get</h2>

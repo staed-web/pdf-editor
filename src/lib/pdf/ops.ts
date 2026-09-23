@@ -13,6 +13,21 @@ import {
 } from "pdf-lib";
 import { ensurePdfWorker, loadPdfDocument, pdfjs } from "./loader";
 
+async function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality?: number
+): Promise<Blob> {
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, type, quality)
+  );
+  if (blob) return blob;
+  // Fallback when toBlob returns null (oversized canvas / unsupported type)
+  const dataUrl = canvas.toDataURL(type, quality);
+  const res = await fetch(dataUrl);
+  return res.blob();
+}
+
 export async function loadPdf(bytes: ArrayBuffer | Uint8Array) {
   const buf =
     bytes instanceof ArrayBuffer ? bytes.slice(0) : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -577,9 +592,7 @@ export async function renderPdfPages(
     const ctx = canvas.getContext("2d")!;
     await page.render({ canvasContext: ctx, viewport }).promise;
     const mime = opts.format === "png" ? "image/png" : "image/jpeg";
-    const blob: Blob = await new Promise((res) =>
-      canvas.toBlob((b) => res(b!), mime, opts.quality ?? 0.92)
-    );
+    const blob = await canvasToBlob(canvas, mime, opts.quality ?? 0.92);
     const ab = await blob.arrayBuffer();
     results.push({
       name: `page_${i}.${opts.format === "png" ? "png" : "jpg"}`,
@@ -644,9 +657,7 @@ export async function compressPdf(
       }
       ctx.putImageData(img, 0, 0);
     }
-    const blob: Blob = await new Promise((res) =>
-      canvas.toBlob((b) => res(b!), "image/jpeg", q)
-    );
+    const blob = await canvasToBlob(canvas, "image/jpeg", q);
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const img = await out.embedJpg(bytes);
     // Preserve original page size in PDF points
@@ -727,9 +738,7 @@ export async function redactRegions(
       for (const r of byPage.get(i)!) {
         ctx.fillRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
       }
-      const blob: Blob = await new Promise((res) =>
-        canvas.toBlob((b) => res(b!), "image/jpeg", 0.92)
-      );
+      const blob = await canvasToBlob(canvas, "image/jpeg", 0.92);
       const jpg = new Uint8Array(await blob.arrayBuffer());
       const img = await out.embedJpg(jpg);
       const base = page.getViewport({ scale: 1 });

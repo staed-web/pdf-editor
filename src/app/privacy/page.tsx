@@ -27,9 +27,9 @@ export default function PrivacyPage() {
       <p>
         Most InstantPDFEdit tools (merge, split, compress, organize, annotate,
         sign, protect, OCR, and similar) read and
-        process files entirely on your device using libraries such as pdf.js and
-        pdf-lib. Bytes stay in page memory (and, if you use Recents, optionally
-        in IndexedDB on your device). They are <strong>never uploaded</strong>{" "}
+        process files entirely on your device in the browser. Bytes stay in page
+        memory (and, if you use Recents, optionally in local browser storage on
+        your device). They are <strong>never uploaded</strong>{" "}
         to InstantPDFEdit servers for processing.
       </p>
       <h3>Print / best-effort (still local)</h3>
@@ -112,10 +112,9 @@ export default function PrivacyPage() {
 
       <h2>Third-party libraries</h2>
       <p>
-        The app loads open-source libraries (for example pdf.js, pdf-lib, and
-        related helpers) in your browser to do the work. Those libraries
-        run locally with your file bytes unless a specific tool documents a
-        browser API call.
+        The app loads open-source libraries in your browser to do the work.
+        Those libraries run locally with your file bytes unless a specific tool
+        documents a browser API call.
       </p>
 
       <h2>Support expectations</h2>

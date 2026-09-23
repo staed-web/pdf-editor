@@ -109,7 +109,7 @@ export default function ProtectPage() {
               />
             </div>
             <p className="text-[11px] text-zinc-500">
-              AES-256 encryption via @cantoo/pdf-lib (real /Encrypt). Keep your
+              Strong password protection is applied on your device. Keep your
               password safe — InstantPDFEdit cannot recover it.
             </p>
             <SoftLimitsNote />

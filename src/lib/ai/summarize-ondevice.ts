@@ -153,13 +153,13 @@ async function summarizeWithXenova(
       onProgress?.(
         pct,
         info.file
-          ? `Downloading model file… ${Math.round(info.progress)}%`
-          : `Loading model… ${Math.round(info.progress)}%`
+          ? `Downloading summary pack… ${Math.round(info.progress)}%`
+          : `Loading summary pack… ${Math.round(info.progress)}%`
       );
     } else if (info.status === "ready" || info.status === "done") {
-      onProgress?.(42, "Model ready — summarizing…");
+      onProgress?.(42, "Pack ready — summarizing…");
     } else {
-      onProgress?.(8, info.status || "Loading model…");
+      onProgress?.(8, info.status || "Loading summary pack…");
     }
   };
 

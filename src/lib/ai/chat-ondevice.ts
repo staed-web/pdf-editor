@@ -149,7 +149,7 @@ export async function ocrScantPages(
     return { pages, ocrPages: [] };
   }
 
-  onProgress?.(4, `OCR ${scant.length} scant page(s) (on-device)…`);
+  onProgress?.(4, `Reading ${scant.length} scanned page(s)…`);
   const { renderPdfPages } = await import("@/lib/pdf/ops");
   const tesseract = await import("tesseract.js");
   throwIfAborted(signal);
@@ -333,11 +333,11 @@ export async function buildChatIndex(
     charCount = kept;
   }
 
-  onProgress?.(40, "Building keyword index (no model download)…");
+  onProgress?.(40, "Preparing your PDF…");
   const rawChunks = chunkPages(pages);
   if (rawChunks.length === 0) {
     throw new Error(
-      "Little or no extractable text. Enable OCR for scant pages, or run the OCR tool first if this is a scan."
+      "Little or no extractable text. Turn on OCR for scanned pages, or run the OCR tool first if this is a scan."
     );
   }
 
@@ -393,7 +393,7 @@ export async function answerWithIndex(
   const q = question.replace(/\s+/g, " ").trim();
   if (!q) throw new Error("Enter a question");
   if (index.chunks.length === 0) {
-    throw new Error("No indexed chunks — load a PDF first");
+    throw new Error("Nothing to search yet — load a PDF first");
   }
 
   onProgress?.(75, "Finding relevant pages…");

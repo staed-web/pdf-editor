@@ -33,7 +33,7 @@ export default function ExtractPage() {
     const out: number[] = [];
     for (const part of s.split(/[,\s]+/).filter(Boolean)) {
       const m = part.match(/^(\d+)(?:-(\d+))?$/);
-      if (!m) throw new Error(`Bad: ${part}`);
+      if (!m) throw new Error(`Invalid page selection: ${part}`);
       const a = Number(m[1]), b = Number(m[2]||m[1]);
       for (let i=a;i<=b;i++) {
         if (i<1||i>max) throw new Error(`Page ${i} out of range`);

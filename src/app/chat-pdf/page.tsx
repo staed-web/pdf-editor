@@ -119,15 +119,12 @@ export default function ChatPdfPage() {
         if (m.role === "user") return [`## Q`, m.text, ``];
         const cites =
           m.citations
-            ?.map(
-              (c) =>
-                `- p.${c.page} (score ${c.score.toFixed(3)}): ${c.snippet}`
-            )
+            ?.map((c) => `- Page ${c.page}: ${c.snippet}`)
             .join("\n") || "";
         return [
-          `## A${m.method ? ` (${m.method})` : ""}`,
+          `## A`,
           m.text,
-          cites ? `\n### Citations\n${cites}` : "",
+          cites ? `\n### Sources\n${cites}` : "",
           ``,
         ];
       }),

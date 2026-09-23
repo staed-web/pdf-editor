@@ -30,7 +30,7 @@ export default function Page() {
     <MarketingShell>
       <ToolShell tool={tool} options={
         <>
-          <p className="text-xs text-zinc-500">Best-effort enumeration of embedded file names (pdf-lib limits on binary extract).</p>
+          <p className="text-xs text-zinc-500">Best-effort list of embedded file names. Some attachments may not extract fully in the browser.</p>
           <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Working…":"Extract"}</Button>
         </>
       }>

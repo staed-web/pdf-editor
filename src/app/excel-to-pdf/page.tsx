@@ -81,8 +81,8 @@ export default function ExcelToPdfPage() {
         options={
           <>
             <p className="text-xs text-zinc-500">
-              Builds a real PDF table via SheetJS + pdf-lib (download). Print
-              remains available for styled HTML output.
+              Builds a downloadable PDF table on your device. Print remains
+              available for styled HTML output.
             </p>
             <Button className="w-full" disabled={!buffer || busy} onClick={downloadPdf}>
               {busy ? "Building…" : "Download PDF"}

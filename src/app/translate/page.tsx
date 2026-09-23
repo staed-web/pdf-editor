@@ -139,6 +139,12 @@ export default function TranslatePage() {
       }
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
+      const methodLabel =
+        translated.method === "browser" || translated.method === "on-device"
+          ? "on your device"
+          : translated.method === "glossary"
+            ? "basic glossary"
+            : "on your device";
       const bilingual = [
         `# Source (${sourceLang})`,
         ``,
@@ -146,9 +152,7 @@ export default function TranslatePage() {
         ``,
         `---`,
         ``,
-        `# Translation (${targetLang}) via ${translated.method}${
-          translated.modelId ? ` · ${translated.modelId}` : ""
-        }`,
+        `# Translation (${targetLang}) · ${methodLabel}`,
         ``,
         translated.text,
       ].join("\n");
