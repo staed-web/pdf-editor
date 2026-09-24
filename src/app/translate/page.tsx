@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
@@ -49,6 +49,16 @@ export default function TranslatePage() {
     bytes: Uint8Array;
     name: string;
   } | null>(null);
+  const [capability, setCapability] = useState<{
+    label: string;
+    detail: string;
+    browserTranslator: boolean | null;
+  }>({
+    label: "Checking translation options…",
+    detail:
+      "Private · on your device. Browser AI first, offline language pack second, basic glossary last (not AI).",
+    browserTranslator: null,
+  });
   const job = useProcessJob();
 
   const pairInfo = useMemo(() => {
@@ -56,6 +66,40 @@ export default function TranslatePage() {
     if (!pair) return null;
     return MARIAN_MODELS[pair.key];
   }, [sourceLang, targetLang]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { probeTranslateEngine } = await import(
+          "@/lib/ai/translate-ondevice"
+        );
+        const probe = await probeTranslateEngine(sourceLang, targetLang);
+        if (!cancelled) {
+          setCapability({
+            label: probe.label,
+            detail: probe.detail,
+            browserTranslator: probe.browserTranslator,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setCapability({
+            label: pairInfo
+              ? "Offline language pack available"
+              : "Basic glossary fallback",
+            detail: pairInfo
+              ? `On-device browser AI isn’t available. An offline language pack (${pairInfo.sizeLabel}) may download on first use. Basic glossary is last resort — not AI.`
+              : "No offline pack for this pair. Basic glossary (word list — not AI) will be used if browser translation isn’t available.",
+            browserTranslator: false,
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceLang, targetLang, pairInfo]);
 
   const onFiles = useCallback(
     async (fs: File[]) => {
@@ -100,7 +144,7 @@ export default function TranslatePage() {
 
   const run = async () => {
     if (!file) return;
-    const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+    const out = await job.run(async ({ signal, setProgress, setLabel, isCancelled }) => {
       setLabel("Extracting text…");
       setProgress(4);
       const pages = await extractTextFromPdf(await file.arrayBuffer());
@@ -114,38 +158,23 @@ export default function TranslatePage() {
 
       setLabel("Starting translation…");
       setProgress(6);
-      const { translateOnDevice } = await import("@/lib/ai/translate-ondevice");
-      const ac = new AbortController();
-      const poll = setInterval(() => {
-        if (isCancelled()) ac.abort();
-      }, 200);
+      const { translateOnDevice, translateMethodBadge } = await import(
+        "@/lib/ai/translate-ondevice"
+      );
 
-      let translated;
-      try {
-        translated = await translateOnDevice(src, {
-          sourceLang,
-          targetLang,
-          signal: ac.signal,
-          onProgress: (pct, label) => {
-            if (isCancelled()) {
-              ac.abort();
-              return;
-            }
-            setProgress(Math.min(88, pct));
-            setLabel(label);
-          },
-        });
-      } finally {
-        clearInterval(poll);
-      }
+      const translated = await translateOnDevice(src, {
+        sourceLang,
+        targetLang,
+        signal,
+        onProgress: (pct, label) => {
+          if (isCancelled()) return;
+          setProgress(Math.min(88, pct));
+          setLabel(label);
+        },
+      });
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
-      const methodLabel =
-        translated.method === "browser" || translated.method === "on-device"
-          ? "on your device"
-          : translated.method === "glossary"
-            ? "basic glossary"
-            : "on your device";
+      const methodLabel = translateMethodBadge(translated.method);
       const bilingual = [
         `# Source (${sourceLang})`,
         ``,
@@ -200,11 +229,13 @@ export default function TranslatePage() {
   };
 
   const badge =
-    method === "browser" || method === "on-device"
-      ? "Private · on your device"
-      : method === "glossary"
-        ? "Basic glossary · on your device"
-        : "";
+    method === "browser"
+      ? "On-device browser AI · private"
+      : method === "on-device"
+        ? "Offline language pack · private"
+        : method === "glossary"
+          ? "Basic glossary · not AI · on your device"
+          : "";
 
   return (
     <MarketingShell>
@@ -225,9 +256,21 @@ export default function TranslatePage() {
           <>
             <p className="text-xs text-zinc-500">
               Translate PDF text privately on your device. Nothing is uploaded.
-              A language pack may download the first time you translate a pair,
-              then it stays cached in your browser.
+              Path: on-device browser AI → offline language pack → basic
+              glossary (not AI). A pack may download once, then stays cached.
             </p>
+            <div
+              className={
+                capability.browserTranslator === false && !pairInfo
+                  ? "rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100"
+                  : capability.browserTranslator === false
+                    ? "rounded-lg border border-sky-200/80 bg-sky-50 px-3 py-2 text-[11px] text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-100"
+                    : "rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100"
+              }
+            >
+              <p className="font-medium">{capability.label}</p>
+              <p className="mt-1 opacity-90">{capability.detail}</p>
+            </div>
             <div className="space-y-2">
               <Label>Target language</Label>
               <select
@@ -253,18 +296,10 @@ export default function TranslatePage() {
                 <option value="hi">Hindi</option>
               </select>
             </div>
-            {pairInfo ? (
-              <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-                Private · on your device
-                {pairInfo.sizeLabel
-                  ? ` · language pack ~${pairInfo.sizeLabel} on first use`
-                  : ""}
-              </p>
-            ) : (
-              <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                No full language pack for {sourceLang}→{targetLang}. Will use
-                your browser’s built-in translator when available, otherwise a
-                basic glossary.
+            {pairInfo && (
+              <p className="text-[11px] text-zinc-500">
+                Offline pack for {pairInfo.label}: {pairInfo.sizeLabel} on first
+                use (cached after).
               </p>
             )}
             <SoftLimitsNote />

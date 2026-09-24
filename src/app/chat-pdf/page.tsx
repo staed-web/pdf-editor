@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
@@ -54,6 +54,11 @@ export default function ChatPdfPage() {
   const [q, setQ] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [badge, setBadge] = useState("");
+  const [capability, setCapability] = useState<{
+    browserAi: boolean;
+    label: string;
+    detail: string;
+  } | null>(null);
   const [result, setResult] = useState<{
     bytes: Uint8Array;
     name: string;
@@ -62,6 +67,29 @@ export default function ChatPdfPage() {
   const sourceBufRef = useRef<ArrayBuffer | null>(null);
   const indexRef = useRef<ChatIndex | null>(null);
   const job = useProcessJob();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { probeChatEngine } = await import("@/lib/ai/chat-ondevice");
+        const probe = await probeChatEngine();
+        if (!cancelled) setCapability(probe);
+      } catch {
+        if (!cancelled) {
+          setCapability({
+            browserAi: false,
+            label: "Basic search mode",
+            detail:
+              "On-device browser AI isn’t available in this browser. Ask PDF uses basic search (keyword matching) with page citations. Still private — nothing is uploaded.",
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onFiles = useCallback(
     async (fs: File[]) => {
@@ -142,7 +170,7 @@ export default function ChatPdfPage() {
     if (!file || !sourceBufRef.current || !q.trim()) return;
     const question = q.trim();
 
-    const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+    const out = await job.run(async ({ signal, setProgress, setLabel, isCancelled }) => {
       setLabel("Extracting text…");
       setProgress(3);
 
@@ -157,64 +185,53 @@ export default function ChatPdfPage() {
         await import("@/lib/ai/chat-ondevice");
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
-      const ac = new AbortController();
-      const poll = setInterval(() => {
-        if (isCancelled()) ac.abort();
-      }, 200);
-
-      try {
-        let idx = indexRef.current;
-        if (!idx) {
-          const doOcr = enableOcr && needsOcr(pageTexts!);
-          if (doOcr) {
-            setLabel("Improving scanned pages…");
-          } else {
-            setLabel("Preparing your PDF…");
-          }
-          idx = await buildChatIndex(pageTexts!, {
-            signal: ac.signal,
-            enableOcr: enableOcr,
-            sourceForOcr: sourceBufRef.current!,
-            onProgress: (pct, label) => {
-              if (isCancelled()) {
-                ac.abort();
-                return;
-              }
-              setProgress(pct);
-              setLabel(label);
-            },
-          });
-          if (isCancelled()) throw new DOMException("Aborted", "AbortError");
-          indexRef.current = idx;
-          setIndex(idx);
+      let idx = indexRef.current;
+      if (!idx) {
+        const doOcr = enableOcr && needsOcr(pageTexts!);
+        if (doOcr) {
+          setLabel("Improving scanned pages…");
+        } else {
+          setLabel("Preparing your PDF…");
         }
-
-        setLabel("Answering…");
-        const answer = await answerWithIndex(idx, question, {
-          signal: ac.signal,
+        idx = await buildChatIndex(pageTexts!, {
+          signal,
+          enableOcr: enableOcr,
+          sourceForOcr: sourceBufRef.current!,
           onProgress: (pct, label) => {
-            if (isCancelled()) {
-              ac.abort();
-              return;
-            }
+            if (isCancelled()) return;
             setProgress(pct);
             setLabel(label);
           },
         });
         if (isCancelled()) throw new DOMException("Aborted", "AbortError");
-
-        return {
-          question,
-          answer: answer.answer,
-          citations: answer.citations,
-          method: answer.method,
-          confidence: answer.confidence,
-          badge: answer.engineLabel,
-          indexMeta: idx,
-        };
-      } finally {
-        clearInterval(poll);
+        indexRef.current = idx;
+        setIndex(idx);
       }
+
+      setLabel(
+        capability?.browserAi
+          ? "Answering on your device…"
+          : "Searching your PDF…"
+      );
+      const answer = await answerWithIndex(idx, question, {
+        signal,
+        onProgress: (pct, label) => {
+          if (isCancelled()) return;
+          setProgress(pct);
+          setLabel(label);
+        },
+      });
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+
+      return {
+        question,
+        answer: answer.answer,
+        citations: answer.citations,
+        method: answer.method,
+        confidence: answer.confidence,
+        badge: answer.engineLabel,
+        indexMeta: idx,
+      };
     });
 
     if (!out) return;
@@ -268,9 +285,21 @@ export default function ChatPdfPage() {
               Ask questions about your PDF. Everything stays on your device —
               nothing is uploaded. Works best under ~{CHAT_MAX_PAGES} pages.
             </p>
-            <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-              Private · in-browser · no upload
-            </p>
+            <div
+              className={
+                capability?.browserAi === false
+                  ? "rounded-lg border border-sky-200/80 bg-sky-50 px-3 py-2 text-[11px] text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-100"
+                  : "rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100"
+              }
+            >
+              <p className="font-medium">
+                {capability?.label ?? "Checking what this browser can do…"}
+              </p>
+              <p className="mt-1 opacity-90">
+                {capability?.detail ??
+                  "Private · in-browser · no upload. We’ll use on-device browser AI when available, otherwise basic search with page citations."}
+              </p>
+            </div>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="ocr-scant">
                 Improve scanned pages with OCR
@@ -363,6 +392,13 @@ export default function ChatPdfPage() {
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
                     {m.text}
                   </p>
+                  {m.role === "assistant" && m.method && (
+                    <p className="text-[11px] text-zinc-500">
+                      {m.method === "browser-prompt"
+                        ? "Answered with on-device browser AI"
+                        : "Basic search (keyword match) · not generative AI"}
+                    </p>
+                  )}
                   {m.citations && m.citations.length > 0 && (
                     <ul className="space-y-1 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800">
                       {m.citations.map((c, j) => (

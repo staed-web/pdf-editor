@@ -997,7 +997,7 @@ export const TOOLS: ToolDef[] = [
     name: "Summarize PDF",
     short: "Private summary",
     description:
-      "Summarize a PDF on your device. Nothing is uploaded. Works best on text PDFs; outline mode is always available.",
+      "Summarize a PDF on your device. Nothing is uploaded. Browser AI when available; outline always works; optional larger offline model stays off until you enable it.",
     category: "ai",
     icon: Sparkles,
     accept: "application/pdf",
@@ -1010,7 +1010,7 @@ export const TOOLS: ToolDef[] = [
     name: "Translate PDF",
     short: "Private translation",
     description:
-      "Translate PDF text privately on your device. Nothing is uploaded. Best for shorter documents.",
+      "Translate PDF text privately on your device. Browser AI first, offline language pack second, basic glossary last (not AI).",
     category: "ai",
     icon: Languages,
     accept: "application/pdf",
@@ -1023,7 +1023,7 @@ export const TOOLS: ToolDef[] = [
     name: "Ask PDF",
     short: "Ask questions privately",
     description:
-      "Ask questions about your PDF. Everything stays on your device — nothing is uploaded.",
+      "Ask questions about your PDF. On-device browser AI when available, otherwise basic search with page citations — nothing is uploaded.",
     category: "ai",
     icon: MessageSquare,
     accept: "application/pdf",

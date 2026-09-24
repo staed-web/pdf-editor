@@ -43,9 +43,12 @@ export default function SummarizePage() {
   const [outline, setOutline] = useState<string[]>([]);
   const [summaryText, setSummaryText] = useState("");
   const [badge, setBadge] = useState("");
-  const [engineHint, setEngineHint] = useState(
-    "Checking summary options…"
-  );
+  const [engineHint, setEngineHint] = useState({
+    label: "Checking summary options…",
+    detail:
+      "Private · on your device. Browser AI when available; optional larger model stays off until you enable it.",
+    browserSummarizer: null as boolean | null,
+  });
   const [result, setResult] = useState<{
     bytes: Uint8Array;
     name: string;
@@ -61,10 +64,21 @@ export default function SummarizePage() {
           "@/lib/ai/summarize-ondevice"
         );
         const probe = await probeSummarizeEngine();
-        if (!cancelled) setEngineHint(probe.label);
+        if (!cancelled) {
+          setEngineHint({
+            label: probe.label,
+            detail: probe.detail,
+            browserSummarizer: probe.browserSummarizer,
+          });
+        }
       } catch {
         if (!cancelled) {
-          setEngineHint("Private · on your device");
+          setEngineHint({
+            label: "Quick outline · optional larger model",
+            detail:
+              "On-device browser AI isn’t available here. You’ll get a quick outline. An optional larger offline model (~230 MB) never starts unless you turn it on.",
+            browserSummarizer: false,
+          });
         }
       }
     })();
@@ -104,7 +118,7 @@ export default function SummarizePage() {
 
   const run = async () => {
     if (!file) return;
-    const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
+    const out = await job.run(async ({ signal, setProgress, setLabel, isCancelled }) => {
       setLabel("Extracting text…");
       setProgress(5);
       const pages = await extractTextFromPdf(await file.arrayBuffer());
@@ -138,123 +152,119 @@ export default function SummarizePage() {
         return {
           outline: bullets,
           summaryText: "",
-          badge: "Private · on your device",
+          badge: "Quick outline · private · on your device",
           bytes: new TextEncoder().encode(md),
           name: suggestedName(file.name, "outline", "md"),
           mime: "text/markdown",
         };
       }
 
-      setLabel("Summarizing…");
+      setLabel(
+        allowXenova
+          ? "Preparing optional offline summary…"
+          : "Summarizing on your device…"
+      );
       setProgress(8);
-      const { summarizeOnDevice } = await import("@/lib/ai/summarize-ondevice");
+      const { summarizeOnDevice, summarizeMethodBadge } = await import(
+        "@/lib/ai/summarize-ondevice"
+      );
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
-      const ac = new AbortController();
-      const poll = setInterval(() => {
-        if (isCancelled()) ac.abort();
-      }, 200);
+      const resultSm = await summarizeOnDevice(text, {
+        signal,
+        allowXenova,
+        onProgress: (pct, label) => {
+          if (isCancelled()) return;
+          setProgress(pct);
+          setLabel(label);
+        },
+      });
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
 
-      try {
-        const resultSm = await summarizeOnDevice(text, {
-          signal: ac.signal,
-          allowXenova,
-          onProgress: (pct, label) => {
-            if (isCancelled()) {
-              ac.abort();
-              return;
-            }
-            setProgress(pct);
-            setLabel(label);
-          },
-        });
-        if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+      const methodBadge = summarizeMethodBadge(resultSm.method);
 
-        if (resultSm.method === "browser-summarizer" && resultSm.summary) {
-          const md = [
-            `# PDF summary`,
-            ``,
-            `Summarized privately on your device.`,
-            ``,
-            resultSm.summary,
-            ``,
-            `---`,
-            ``,
-            `# Outline`,
-            ``,
-            ...bullets.map((b) => `- ${b}`),
-            ``,
-            `---`,
-            ``,
-            `# Extracted text (truncated)`,
-            ``,
-            text.slice(0, 50000),
-          ].join("\n");
-          return {
-            outline: bullets,
-            summaryText: resultSm.summary,
-            badge: "Private · on your device",
-            bytes: new TextEncoder().encode(md),
-            name: suggestedName(file.name, "summary", "md"),
-            mime: "text/markdown",
-          };
-        }
-
-        if (resultSm.method === "xenova-distilbart" && resultSm.summary) {
-          const md = [
-            `# PDF summary`,
-            ``,
-            `Summarized privately on your device.`,
-            ``,
-            resultSm.summary,
-            ``,
-            `---`,
-            ``,
-            `# Outline`,
-            ``,
-            ...bullets.map((b) => `- ${b}`),
-            ``,
-            `---`,
-            ``,
-            `# Extracted text (truncated)`,
-            ``,
-            text.slice(0, 50000),
-          ].join("\n");
-          return {
-            outline: bullets,
-            summaryText: resultSm.summary,
-            badge: "Private · on your device",
-            bytes: new TextEncoder().encode(md),
-            name: suggestedName(file.name, "summary", "md"),
-            mime: "text/markdown",
-          };
-        }
-
-        // Default honest fallback — no Xenova auto-download
+      if (resultSm.method === "browser-summarizer" && resultSm.summary) {
         const md = [
-          `# PDF outline`,
+          `# PDF summary`,
           ``,
-          `Key sentences extracted on your device.`,
+          `Summarized privately on your device.`,
+          ``,
+          resultSm.summary,
+          ``,
+          `---`,
+          ``,
+          `# Outline`,
           ``,
           ...bullets.map((b) => `- ${b}`),
           ``,
           `---`,
           ``,
-          `# Extracted text`,
+          `# Extracted text (truncated)`,
           ``,
-          text.slice(0, 100000),
+          text.slice(0, 50000),
         ].join("\n");
         return {
           outline: bullets,
-          summaryText: "",
-          badge: "Private · on your device",
+          summaryText: resultSm.summary,
+          badge: methodBadge,
           bytes: new TextEncoder().encode(md),
-          name: suggestedName(file.name, "outline", "md"),
+          name: suggestedName(file.name, "summary", "md"),
           mime: "text/markdown",
         };
-      } finally {
-        clearInterval(poll);
       }
+
+      if (resultSm.method === "xenova-distilbart" && resultSm.summary) {
+        const md = [
+          `# PDF summary`,
+          ``,
+          `Summarized privately on your device (optional offline model).`,
+          ``,
+          resultSm.summary,
+          ``,
+          `---`,
+          ``,
+          `# Outline`,
+          ``,
+          ...bullets.map((b) => `- ${b}`),
+          ``,
+          `---`,
+          ``,
+          `# Extracted text (truncated)`,
+          ``,
+          text.slice(0, 50000),
+        ].join("\n");
+        return {
+          outline: bullets,
+          summaryText: resultSm.summary,
+          badge: methodBadge,
+          bytes: new TextEncoder().encode(md),
+          name: suggestedName(file.name, "summary", "md"),
+          mime: "text/markdown",
+        };
+      }
+
+      // Default honest fallback — no Xenova auto-download
+      const md = [
+        `# PDF outline`,
+        ``,
+        `Key sentences extracted on your device.`,
+        ``,
+        ...bullets.map((b) => `- ${b}`),
+        ``,
+        `---`,
+        ``,
+        `# Extracted text`,
+        ``,
+        text.slice(0, 100000),
+      ].join("\n");
+      return {
+        outline: bullets,
+        summaryText: "",
+        badge: methodBadge,
+        bytes: new TextEncoder().encode(md),
+        name: suggestedName(file.name, "outline", "md"),
+        mime: "text/markdown",
+      };
     });
 
     if (!out) return;
@@ -289,11 +299,18 @@ export default function SummarizePage() {
             <p className="text-xs text-zinc-500">
               Summarize a PDF on your device. Nothing is uploaded. Outline mode
               is always available; optional deeper summary may download a larger
-              on-device pack the first time you enable it.
+              on-device pack the first time you enable it — never automatic.
             </p>
-            <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-              {engineHint}
-            </p>
+            <div
+              className={
+                engineHint.browserSummarizer === false
+                  ? "rounded-lg border border-sky-200/80 bg-sky-50 px-3 py-2 text-[11px] text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-100"
+                  : "rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100"
+              }
+            >
+              <p className="font-medium">{engineHint.label}</p>
+              <p className="mt-1 opacity-90">{engineHint.detail}</p>
+            </div>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="fast-outline">
                 Quick outline only
@@ -310,7 +327,7 @@ export default function SummarizePage() {
             {!fastOnly && (
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="allow-xenova">
-                  Optional deeper summary ({SUMMARIZE_MODEL_SIZE_LABEL} download)
+                  Optional offline model ({SUMMARIZE_MODEL_SIZE_LABEL})
                 </Label>
                 <Switch
                   id="allow-xenova"
@@ -321,8 +338,10 @@ export default function SummarizePage() {
             )}
             {allowXenova && !fastOnly && (
               <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                Large download — may struggle on low-memory devices. Prefer
-                leaving this off unless you need a richer summary.
+                Downloads only after you turn this on and tap Summarize — never
+                on page load. Large pack (~230 MB); may struggle on low-memory
+                devices. Prefer leaving this off unless you need a richer
+                summary.
               </p>
             )}
             <SoftLimitsNote />
