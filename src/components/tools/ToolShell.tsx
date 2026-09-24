@@ -84,7 +84,11 @@ export function ToolShell({
 
       {!standalone && (
         <div className="mt-8 mb-2">
-          <AdBanner variant="infeed" className="w-full max-w-none" />
+          <AdBanner
+            variant="infeed"
+            className="w-full max-w-none"
+            privacyFallback
+          />
         </div>
       )}
 

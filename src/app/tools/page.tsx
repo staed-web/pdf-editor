@@ -122,7 +122,11 @@ export default function ToolsIndexPage() {
 
         {!standalone && (
           <div className="mt-6 sm:mt-8">
-            <AdBanner variant="leaderboard" className="w-full max-w-none" />
+            <AdBanner
+              variant="leaderboard"
+              className="w-full max-w-none"
+              privacyFallback
+            />
           </div>
         )}
 

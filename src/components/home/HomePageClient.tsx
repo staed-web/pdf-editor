@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useStandalone } from "@/hooks/useStandalone";
 import { AdBanner } from "@/components/ads/AdBanner";
+import { isAdSlotConfigured } from "@/lib/ads";
 import {
   homeSpotlightTools,
   TOOLS,
@@ -143,7 +144,11 @@ function WebHome() {
       </section>
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <AdBanner variant="leaderboard" className="w-full max-w-none" />
+        <AdBanner
+          variant="leaderboard"
+          className="w-full max-w-none"
+          privacyFallback
+        />
       </div>
 
       <section className="bg-[var(--panel)] py-12 sm:py-14">
@@ -225,9 +230,11 @@ function WebHome() {
         </ol>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <AdBanner variant="infeed" className="w-full max-w-none" />
-      </div>
+      {isAdSlotConfigured("infeed") && (
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <AdBanner variant="infeed" className="w-full max-w-none" />
+        </div>
+      )}
 
       <section id="faq" className="border-t border-[var(--hairline)] bg-[var(--card)] py-12 sm:py-14">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">

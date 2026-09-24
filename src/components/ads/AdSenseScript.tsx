@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-
-const ADSENSE_CLIENT =
-  process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-9372118866074955";
+import { ADSENSE_CLIENT } from "@/lib/ads";
 
 /**
  * Loads the Google AdSense script site-wide (auto ads + display units).
  * Uses a plain DOM script (not next/script) so we do not inject
  * data-nscript into <head>, which AdSense warns about.
+ * Publisher: ca-pub-9372118866074955 — keep in sync with public/ads.txt.
  */
 export function AdSenseScript() {
   useEffect(() => {

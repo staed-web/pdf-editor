@@ -2,18 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStandalone } from "@/hooks/useStandalone";
+import {
+  ADSENSE_CLIENT,
+  type AdBannerVariant,
+  isAdSlotConfigured,
+  resolveAdSlot,
+} from "@/lib/ads";
 import { cn } from "@/lib/utils";
+import { PrivacySoftCta } from "./PrivacySoftCta";
 
-export type AdBannerVariant = "leaderboard" | "rectangle" | "infeed";
-
-const ADSENSE_CLIENT =
-  process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-9372118866074955";
-
-const SLOT_ENV: Record<AdBannerVariant, string | undefined> = {
-  leaderboard: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LEADERBOARD,
-  infeed: process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED,
-  rectangle: process.env.NEXT_PUBLIC_ADSENSE_SLOT_RECTANGLE,
-};
+export type { AdBannerVariant };
 
 const VARIANT_STYLES: Record<
   AdBannerVariant,
@@ -43,18 +41,25 @@ declare global {
 }
 
 /**
- * Sponsored slot that collapses until AdSense fills.
- * Missing env slot → render nothing (no empty Sponsored chrome).
+ * Sponsored slot that only mounts when a real AdSense slot ID is configured.
+ * Missing slot → optional soft privacy CTA (no empty Sponsored chrome).
+ * Unfilled AdSense responses collapse to nothing after a short wait.
  */
 export function AdBanner({
   variant = "leaderboard",
   className,
   slot,
+  privacyFallback = false,
 }: {
   variant?: AdBannerVariant;
   className?: string;
   /** Override env slot for this instance */
   slot?: string;
+  /**
+   * When no slot ID is configured, show a compact privacy note instead of
+   * nothing. Use sparingly (one per page) — not an upsell wall.
+   */
+  privacyFallback?: boolean;
 }) {
   const standalone = useStandalone();
   const pushed = useRef(false);
@@ -62,8 +67,8 @@ export function AdBanner({
   const [filled, setFilled] = useState(false);
   const [giveUp, setGiveUp] = useState(false);
 
-  const resolvedSlot = (slot ?? SLOT_ENV[variant] ?? "").trim();
-  const hasSlot = resolvedSlot.length > 0;
+  const resolvedSlot = resolveAdSlot(variant, slot);
+  const hasSlot = isAdSlotConfigured(variant, slot);
   const styles = VARIANT_STYLES[variant];
 
   useEffect(() => {
@@ -125,14 +130,21 @@ export function AdBanner({
     };
   }, [standalone, hasSlot, resolvedSlot]);
 
-  if (standalone || !hasSlot || giveUp) return null;
+  if (standalone) return null;
+
+  if (!hasSlot) {
+    return privacyFallback ? <PrivacySoftCta className={className} /> : null;
+  }
+
+  if (giveUp) return null;
 
   return (
     <aside
       className={cn(
         "mx-auto w-full transition-[max-height,opacity,margin] duration-300",
         styles.maxW,
-        !filled && "pointer-events-none max-h-0 overflow-hidden opacity-0 !m-0 !p-0",
+        !filled &&
+          "pointer-events-none max-h-0 overflow-hidden opacity-0 !m-0 !p-0",
         filled && "opacity-100",
         className
       )}
