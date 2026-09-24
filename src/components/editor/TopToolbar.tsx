@@ -90,20 +90,34 @@ export function TopToolbar() {
   const deleteSelected = useEditorStore((s) => s.deleteSelected);
   const selectedIds = useEditorStore((s) => s.selectedIds);
 
-  const onExport = async () => {
+  const onExport = async (opts?: { lock?: boolean }) => {
     if (!pdfBytes) return;
     setExporting(true);
     try {
-      const bytes = await exportEditedPdf({
+      const hasSignature = annotations.some((a) => a.type === "signature");
+      const lock = opts?.lock === true || hasSignature || settings.flattenFormsOnExport;
+      let bytes = await exportEditedPdf({
         sourceBytes: pdfBytes,
         pages,
         annotations,
         formValues,
-        flattenForms: settings.flattenFormsOnExport,
+        flattenForms: lock,
       });
-      const name = (fileName || "document").replace(/\.pdf$/i, "") + "-edited.pdf";
+      if (lock) {
+        const { flattenForms } = await import("@/lib/pdf/ops");
+        bytes = await flattenForms(bytes, { stripAnnotations: true });
+      }
+      const name =
+        (fileName || "document").replace(/\.pdf$/i, "") +
+        (lock ? "-signed-locked.pdf" : "-edited.pdf");
       downloadBlob(bytes, name);
-      toast.success("PDF exported");
+      toast.success(
+        lock
+          ? hasSignature
+            ? "Exported locked PDF — signature burned in, forms flattened"
+            : "Exported with forms flattened & locked"
+          : "PDF exported"
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -237,7 +251,15 @@ export function TopToolbar() {
               e.target.value = "";
             }}
           />
-          <ToolBtn tip="Export" disabled={!pdfBytes || exporting} onClick={() => void onExport()}>
+          <ToolBtn
+            tip={
+              annotations.some((a) => a.type === "signature")
+                ? "Export locked (flatten & lock)"
+                : "Export"
+            }
+            disabled={!pdfBytes || exporting}
+            onClick={() => void onExport()}
+          >
             <Download />
           </ToolBtn>
           <ToolBtn

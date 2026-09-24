@@ -413,13 +413,37 @@ export async function cropPages(
   return src.save();
 }
 
-export async function flattenForms(source: ArrayBuffer): Promise<Uint8Array> {
+/**
+ * Flatten fillable forms into page content, then strip leftover annotations
+ * so signatures/widgets can't be edited or removed as separate objects.
+ * InstantPDFEdit-drawn signatures are already page images on export; this
+ * locks form fields and any remaining Annots for a reliable "lock" step.
+ */
+export async function flattenForms(
+  source: ArrayBuffer | Uint8Array,
+  opts: { stripAnnotations?: boolean } = {}
+): Promise<Uint8Array> {
+  const strip = opts.stripAnnotations !== false;
   const src = await loadPdf(source);
   try {
     const form = src.getForm();
     form.flatten();
   } catch {
     /* no form or can't flatten */
+  }
+  if (strip) {
+    for (const page of src.getPages()) {
+      try {
+        page.node.delete(PDFName.of("Annots"));
+      } catch {
+        /* */
+      }
+    }
+    try {
+      src.catalog.delete(PDFName.of("AcroForm"));
+    } catch {
+      /* */
+    }
   }
   return src.save({ useObjectStreams: true });
 }

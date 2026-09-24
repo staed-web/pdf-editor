@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, EyeOff } from "lucide-react";
+import { Search, EyeOff, ShieldCheck } from "lucide-react";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { ToolActionBar } from "@/components/tools/ToolActionBar";
@@ -30,6 +30,7 @@ import { getTool } from "@/lib/tools";
 import { useProcessJob } from "@/hooks/useProcessJob";
 import { useHandoffIntake } from "@/hooks/useHandoffIntake";
 import { redactRegions } from "@/lib/pdf/ops";
+import { ensurePdfWorker, loadPdfDocument } from "@/lib/pdf/loader";
 import { downloadBytes, isPdfFile } from "@/lib/download";
 import { cn } from "@/lib/utils";
 import {
@@ -49,6 +50,44 @@ const tool = getTool("redact")!;
 
 type Region = { pageIndex: number; x: number; y: number; w: number; h: number };
 
+async function renderVerifyPreview(
+  bytes: Uint8Array,
+  pageIndex: number
+): Promise<{ url: string; textSample: string }> {
+  ensurePdfWorker();
+  const ab = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  ) as ArrayBuffer;
+  const doc = await loadPdfDocument(ab);
+  const page = await doc.getPage(pageIndex + 1);
+  const scale = 1.15;
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  const url = canvas.toDataURL("image/jpeg", 0.85);
+  let textSample = "";
+  try {
+    const content = await page.getTextContent();
+    textSample = content.items
+      .map((it) => ("str" in it ? it.str : ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 180);
+  } catch {
+    textSample = "";
+  }
+  page.cleanup();
+  doc.destroy();
+  return { url, textSample };
+}
+
 export default function RedactPage() {
   const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<PdfFileSummary | null>(null);
@@ -61,6 +100,12 @@ export default function RedactPage() {
   const [result, setResult] = useState<{ bytes: Uint8Array; name: string } | null>(
     null
   );
+  const [verify, setVerify] = useState<{
+    url: string;
+    pageIndex: number;
+    hardWipe: boolean;
+    textSample: string;
+  } | null>(null);
   const [hardWipe, setHardWipe] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [patternIds, setPatternIds] = useState<RedactPatternId[]>([
@@ -83,6 +128,7 @@ export default function RedactPage() {
       if (!f) return toast.error("PDF only");
       setFile(f);
       setResult(null);
+      setVerify(null);
       setRegions([]);
       setHits([]);
       setSelectedHitIds(new Set());
@@ -103,6 +149,7 @@ export default function RedactPage() {
     setHits([]);
     setSelectedHitIds(new Set());
     setResult(null);
+    setVerify(null);
     job.resetError();
   };
 
@@ -165,23 +212,39 @@ export default function RedactPage() {
       );
       return;
     }
+    const previewPage =
+      allRegions.map((r) => r.pageIndex).sort((a, b) => a - b)[0] ?? 0;
+    const usedHardWipe = hardWipe;
     const bytes = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
-      setLabel(hardWipe ? "Hard wipe redaction…" : "Applying redactions…");
+      setLabel(usedHardWipe ? "Hard wipe redaction…" : "Applying redactions…");
       setProgress(25);
       const out = await redactRegions(await file.arrayBuffer(), allRegions, {
-        hardWipe,
+        hardWipe: usedHardWipe,
       });
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
-      setProgress(90);
+      setProgress(70);
+      setLabel("Building verify preview…");
+      try {
+        const preview = await renderVerifyPreview(out, previewPage);
+        setVerify({
+          url: preview.url,
+          pageIndex: previewPage,
+          hardWipe: usedHardWipe,
+          textSample: preview.textSample,
+        });
+      } catch {
+        setVerify(null);
+      }
+      setProgress(95);
       return out;
     });
     if (!bytes) return;
     const name = suggestedName(file.name, "redacted");
     setResult({ bytes, name });
     toast.success(
-      hardWipe
-        ? "Redacted with hard wipe (affected pages rasterized)"
-        : "Redacted (visual black boxes)"
+      usedHardWipe
+        ? "Redacted — check verify preview (content burned away)"
+        : "Redacted (visual black boxes — not secure)"
     );
   };
 
@@ -380,11 +443,11 @@ export default function RedactPage() {
               {pages ? ` · ${pages} pages` : " · no file"}
             </p>
             <SoftLimitsNote />
-            
+
             <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-              <strong>Verify redaction:</strong> after download, open the PDF and
-              try selecting or searching the covered text. With hard wipe it
-              should be gone — a black box alone is not enough for sensitive data.
+              <strong>Verify before download:</strong> after redacting, a page
+              preview appears so you can confirm black areas wiped the content.
+              Soft black boxes alone are not enough for sensitive data.
             </div>
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <DialogContent>
@@ -440,10 +503,50 @@ export default function RedactPage() {
           onRetry={() => void run()}
           onChooseFile={resetAll}
         />
+        {verify && (
+          <div className="space-y-2 rounded-2xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-900/50 dark:bg-sky-950/30">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sky-700 dark:text-sky-300" />
+              <div>
+                <p className="text-sm font-semibold text-sky-950 dark:text-sky-50">
+                  Verify preview · page {verify.pageIndex + 1}
+                </p>
+                <p className="text-xs text-sky-900/80 dark:text-sky-200/80">
+                  {verify.hardWipe
+                    ? "Hard wipe: black areas are burned into the page image. Underlying text in those regions should be gone (not a removable overlay)."
+                    : "Soft mode: black boxes may still leave text selectable underneath — switch on Hard wipe for sensitive data."}
+                </p>
+                {verify.hardWipe && (
+                  <p className="mt-1 text-[11px] text-sky-800/70 dark:text-sky-300/70">
+                    Selectable text left on this page:{" "}
+                    {verify.textSample
+                      ? `“${verify.textSample}${verify.textSample.length >= 180 ? "…" : ""}”`
+                      : "(none detected — good for a fully rasterized wipe page)"}
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={verify.url}
+              alt={`Redaction verify preview page ${verify.pageIndex + 1}`}
+              className="max-h-[420px] w-full rounded-xl border border-sky-200 object-contain bg-white dark:border-sky-900"
+            />
+            <p className="text-[11px] font-medium text-sky-900 dark:text-sky-100">
+              Content removed confirmation: check that sensitive areas are solid
+              black with no readable characters underneath before you download.
+            </p>
+          </div>
+        )}
         {result && (
           <ProcessSuccess
             fileName={result.name}
             size={result.bytes.byteLength}
+            meta={
+              verify?.hardWipe
+                ? "Hard wipe · verify preview above"
+                : "Visual boxes · not a hard wipe"
+            }
             blob={result.bytes}
             fromTool="redact"
             onDownload={() => downloadBytes(result.bytes, result.name)}

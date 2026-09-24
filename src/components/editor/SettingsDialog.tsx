@@ -67,8 +67,10 @@ export function SettingsDialog() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label>Flatten forms on export</Label>
-              <p className="text-[10px] text-[var(--muted)]">Burn field values into page content</p>
+              <Label>Flatten &amp; lock on export</Label>
+              <p className="text-[10px] text-[var(--muted)]">
+                Burn form fields into pages and strip leftover annotations (auto when you sign)
+              </p>
             </div>
             <Switch
               checked={settings.flattenFormsOnExport}

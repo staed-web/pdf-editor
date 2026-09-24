@@ -56,8 +56,9 @@ export default function SignPage() {
                   <PenTool className="h-3.5 w-3.5" />
                 </span>
                 <span>
-                  <strong>Sign</strong> in the editor (enable “Flatten forms on
-                  export” in Settings if the PDF has fillable fields).
+                  <strong>Sign</strong> in the editor — export auto-locks when a
+                  signature is present (or turn on “Flatten &amp; lock on export”
+                  in Settings for fillable forms).
                 </span>
               </li>
               <li className="flex gap-3">
@@ -65,10 +66,11 @@ export default function SignPage() {
                   <Layers className="h-3.5 w-3.5" />
                 </span>
                 <span>
-                  <strong>Flatten</strong> signatures & forms so they can&apos;t be
-                  edited — use{" "}
+                  <strong>Flatten &amp; lock</strong> so forms/annotations can&apos;t
+                  be edited — the editor auto-locks when you export a signature,
+                  or use{" "}
                   <Link href="/flatten" className="font-medium text-amber-700 underline dark:text-amber-400">
-                    Flatten PDF
+                    Flatten &amp; lock
                   </Link>{" "}
                   (or the Flatten chip after export).
                 </span>
