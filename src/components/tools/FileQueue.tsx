@@ -33,11 +33,14 @@ export function FileQueue({
     <div className={cn("space-y-2", className)}>
       {onReorder && (
         <p className="text-[11px] font-medium text-zinc-500">
-          Drag the{" "}
-          <span className="inline-flex items-center gap-0.5 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 dark:border-zinc-700 dark:bg-zinc-800">
-            <GripVertical className="h-3 w-3" /> handle
-          </span>{" "}
-          to reorder · or use arrows
+          <span className="sm:hidden">Use ▲ ▼ to reorder</span>
+          <span className="hidden sm:inline">
+            Drag the{" "}
+            <span className="inline-flex items-center gap-0.5 rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 dark:border-zinc-700 dark:bg-zinc-800">
+              <GripVertical className="h-3 w-3" /> handle
+            </span>{" "}
+            to reorder · or use arrows
+          </span>
         </p>
       )}
       <ul className="space-y-2">
@@ -77,7 +80,7 @@ export function FileQueue({
             {onReorder && (
               <button
                 type="button"
-                className="flex h-9 w-8 shrink-0 cursor-grab flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-zinc-500 active:cursor-grabbing dark:border-zinc-600 dark:bg-zinc-800"
+                className="hidden h-9 w-8 shrink-0 cursor-grab flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-zinc-500 active:cursor-grabbing sm:flex dark:border-zinc-600 dark:bg-zinc-800"
                 aria-label={`Drag to reorder ${f.name}`}
                 title="Drag to reorder"
               >
@@ -97,34 +100,34 @@ export function FileQueue({
               </p>
             </div>
             {f.pageCount != null && (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 dark:text-amber-300">
+              <span className="hidden rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 xs:inline dark:text-amber-300 sm:inline">
                 {f.pageCount}p
               </span>
             )}
             <span className="text-[11px] tabular-nums text-zinc-400">#{i + 1}</span>
             {onReorder && (
-              <div className="flex shrink-0 flex-col gap-0.5">
+              <div className="flex shrink-0 items-center gap-0.5 sm:flex-col sm:gap-0.5">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-7 w-7 text-zinc-400"
+                  className="h-10 w-10 touch-manipulation text-zinc-600 sm:h-7 sm:w-7 sm:border-0 sm:bg-transparent sm:text-zinc-400"
                   disabled={i === 0}
                   aria-label="Move up"
                   onClick={() => onReorder(i, i - 1)}
                 >
-                  <ChevronUp className="h-3.5 w-3.5" />
+                  <ChevronUp className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-7 w-7 text-zinc-400"
+                  className="h-10 w-10 touch-manipulation text-zinc-600 sm:h-7 sm:w-7 sm:border-0 sm:bg-transparent sm:text-zinc-400"
                   disabled={i === files.length - 1}
                   aria-label="Move down"
                   onClick={() => onReorder(i, i + 1)}
                 >
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                 </Button>
               </div>
             )}
@@ -132,7 +135,7 @@ export function FileQueue({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-400 hover:text-red-500"
+              className="h-10 w-10 text-zinc-400 hover:text-red-500 sm:h-8 sm:w-8"
               onClick={() => onRemove(f.id)}
               aria-label="Remove"
             >

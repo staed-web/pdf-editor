@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { RotateCw, Trash2 } from "lucide-react";
+import {
+  RotateCw,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
@@ -40,6 +47,16 @@ export default function OrganizePage() {
     setFile(null);
     setThumbs([]);
     setResult(null);
+  };
+
+  const moveThumb = (from: number, to: number) => {
+    if (to < 0 || to >= thumbs.length || from === to) return;
+    setThumbs((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
   };
 
   const onFiles = async (files: File[]) => {
@@ -117,7 +134,15 @@ export default function OrganizePage() {
             </Button>
           </ToolActionBar>
         }
-        options={<SoftLimitsNote />}
+        options={
+          <>
+            <p className="text-xs text-zinc-500">
+              On phones, use the arrows to reorder pages. On desktop you can also
+              drag thumbnails.
+            </p>
+            <SoftLimitsNote />
+          </>
+        }
       >
         <DropZone
           accept="application/pdf"
@@ -135,16 +160,12 @@ export default function OrganizePage() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => {
                   if (dragFrom == null || dragFrom === i) return;
-                  setThumbs((prev) => {
-                    const next = [...prev];
-                    const [item] = next.splice(dragFrom, 1);
-                    next.splice(i, 0, item);
-                    return next;
-                  });
+                  moveThumb(dragFrom, i);
                   setDragFrom(null);
                 }}
                 className={cn(
-                  "group relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  "group relative overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900",
+                  dragFrom === i && "opacity-60 ring-2 ring-amber-400/50"
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -154,14 +175,37 @@ export default function OrganizePage() {
                   className="w-full"
                   style={{ transform: `rotate(${t.rot}deg)` }}
                 />
-                <div className="flex items-center justify-between px-2 py-1.5 text-[11px] text-zinc-500">
-                  <span>
-                    #{i + 1} · src {t.srcIdx + 1}
+                <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 text-[11px] text-zinc-500">
+                  <span className="shrink-0 tabular-nums">
+                    #{i + 1}
+                    <span className="text-zinc-400"> · src {t.srcIdx + 1}</span>
                   </span>
-                  <span className="flex gap-1">
+                  <span className="flex flex-wrap items-center justify-end gap-0.5">
                     <button
                       type="button"
-                      className="touch-target rounded p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      className="touch-target flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 sm:h-8 sm:w-8"
+                      disabled={i === 0}
+                      onClick={() => moveThumb(i, i - 1)}
+                      aria-label="Move earlier"
+                      title="Move earlier"
+                    >
+                      <ChevronUp className="hidden h-4 w-4 sm:block" />
+                      <ChevronLeft className="h-4 w-4 sm:hidden" />
+                    </button>
+                    <button
+                      type="button"
+                      className="touch-target flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 sm:h-8 sm:w-8"
+                      disabled={i === thumbs.length - 1}
+                      onClick={() => moveThumb(i, i + 1)}
+                      aria-label="Move later"
+                      title="Move later"
+                    >
+                      <ChevronDown className="hidden h-4 w-4 sm:block" />
+                      <ChevronRight className="h-4 w-4 sm:hidden" />
+                    </button>
+                    <button
+                      type="button"
+                      className="touch-target flex h-9 w-9 items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 sm:h-8 sm:w-8"
                       onClick={() =>
                         setThumbs((p) =>
                           p.map((x, j) =>
@@ -175,7 +219,7 @@ export default function OrganizePage() {
                     </button>
                     <button
                       type="button"
-                      className="touch-target rounded p-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                      className="touch-target flex h-9 w-9 items-center justify-center rounded-lg hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 sm:h-8 sm:w-8"
                       onClick={() =>
                         setThumbs((p) => p.filter((_, j) => j !== i))
                       }

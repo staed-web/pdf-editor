@@ -184,7 +184,7 @@ export default function MergePage() {
           multiple
           onFiles={onAdd}
           label="Drop PDFs to merge"
-          hint="Drag the handle to reorder · page badges load automatically"
+          hint="Reorder with ▲▼ (phones) or drag handle (desktop) · page badges load automatically"
         />
         <FileQueue files={files} onRemove={remove} onReorder={reorder} />
         {files.length > 0 && (
