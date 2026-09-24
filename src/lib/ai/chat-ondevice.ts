@@ -8,25 +8,35 @@ import {
   isLanguageModelUsable,
   throwIfAborted,
 } from "./chrome-ai";
+import {
+  CHAT_CHUNK_CHARS,
+  CHAT_CHUNK_OVERLAP,
+  CHAT_CONTEXT_CHARS,
+  CHAT_MAX_CHARS,
+  CHAT_MAX_PAGES,
+  CHAT_TOP_K,
+  SCANT_PAGE_CHARS,
+  pagesNeedOcr,
+  type PageText,
+} from "./chat-meta";
 
-export const CHAT_MAX_PAGES = 80;
-export const CHAT_MAX_CHARS = 350_000;
-export const CHAT_CHUNK_CHARS = 900;
-export const CHAT_CHUNK_OVERLAP = 80;
-export const CHAT_TOP_K = 6;
-/** Soft context budget for Prompt API prompts (~chars). */
-export const CHAT_CONTEXT_CHARS = 10_000;
-/** Pages with fewer chars than this are candidates for OCR. */
-export const SCANT_PAGE_CHARS = 40;
+export {
+  CHAT_MAX_PAGES,
+  CHAT_MAX_CHARS,
+  CHAT_CHUNK_CHARS,
+  CHAT_CHUNK_OVERLAP,
+  CHAT_TOP_K,
+  CHAT_CONTEXT_CHARS,
+  SCANT_PAGE_CHARS,
+  CHAT_MODELS_SIZE_LABEL,
+  pagesNeedOcr,
+  type PageText,
+} from "./chat-meta";
 
 /** @deprecated Removed — no Xenova chat downloads. Kept so old imports don't break builds mid-edit. */
 export const EMBED_MODEL_ID = "";
 /** @deprecated Removed — no Xenova chat downloads. */
 export const QA_MODEL_ID = "";
-/** @deprecated No chat model download on this route. */
-export const CHAT_MODELS_SIZE_LABEL = "runs on your device";
-
-export type PageText = { page: number; text: string };
 
 export type DocChunk = {
   id: number;
@@ -190,13 +200,6 @@ export async function ocrScantPages(
   return { pages: merged, ocrPages };
 }
 
-export function pagesNeedOcr(pages: PageText[]): boolean {
-  if (pages.length === 0) return false;
-  const scant = pages.filter(
-    (p) => (p.text || "").replace(/\s+/g, "").length < SCANT_PAGE_CHARS
-  ).length;
-  return scant >= Math.max(1, Math.ceil(pages.length * 0.3));
-}
 
 function scoreChunk(queryTokens: string[], chunkText: string): number {
   if (queryTokens.length === 0) return 0;

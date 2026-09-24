@@ -20,7 +20,9 @@ export async function loadTransformers(): Promise<TransformersMod> {
   if (typeof window === "undefined") {
     throw new Error("On-device models only run in the browser");
   }
-  const mod = await import("@xenova/transformers");
+  const mod = await import(
+    /* webpackChunkName: "xenova-transformers" */ "@xenova/transformers"
+  );
   if (!configured) {
     // Remote HF hub only — do not look for /models on this origin
     mod.env.allowLocalModels = false;
