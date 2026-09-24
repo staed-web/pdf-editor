@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "InstantPDFEdit",
     short_name: "InstantPDF",
     description:
@@ -10,9 +11,11 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "any",
-    background_color: "#f7f6f3",
+    background_color: "#f4f3ef",
     theme_color: "#d97706",
     categories: ["productivity", "utilities"],
+    lang: "en",
+    dir: "ltr",
     icons: [
       {
         src: "/icons/icon-192.png",

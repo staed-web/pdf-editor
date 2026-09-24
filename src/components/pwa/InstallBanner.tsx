@@ -81,9 +81,15 @@ export function InstallBanner({ website = false }: { website?: boolean }) {
         WebkitBackdropFilter: "saturate(180%) blur(20px)",
       }}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 text-sm font-black text-zinc-950 shadow-md shadow-amber-500/25">
-        I
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/icons/icon-192.png"
+        alt=""
+        width={44}
+        height={44}
+        className="h-11 w-11 shrink-0 rounded-2xl shadow-md shadow-amber-500/25"
+        decoding="async"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-foreground">
           Install InstantPDFEdit

@@ -21,6 +21,7 @@ declare const self: ServiceWorkerGlobalScope;
  * - Large user PDFs are never cached by the SW (opaque / no request).
  * - /ads.txt uses NetworkOnly so AdSense verification is never stale-cached.
  * - /robots.txt and /sitemap.xml use NetworkOnly so crawlers always get fresh copies.
+ * - HF / Xenova / ONNX model blobs use NetworkOnly (separate from app asset caches).
  * - Serwist uses webpack injectManifest; `next build` must use webpack
  *   (Next 16 default for production build). Turbopack `next dev` disables SW.
  */
@@ -37,6 +38,37 @@ const serwist = new Serwist({
         url.pathname === "/ads.txt" ||
         url.pathname === "/robots.txt" ||
         url.pathname === "/sitemap.xml",
+      handler: new NetworkOnly(),
+    },
+    // Hugging Face / Xenova / ONNX model blobs — never pollute default app caches.
+    // transformers.js uses its own Cache API (env.useBrowserCache); SW stays NetworkOnly.
+    {
+      matcher: ({ url }) => {
+        const host = url.hostname;
+        const path = url.pathname;
+        if (
+          host === "huggingface.co" ||
+          host.endsWith(".huggingface.co") ||
+          host === "hf.co" ||
+          host.endsWith(".hf.co") ||
+          host.endsWith(".xethub.hf.co")
+        ) {
+          return true;
+        }
+        if (
+          (host === "cdn.jsdelivr.net" || host.endsWith(".jsdelivr.net")) &&
+          (/onnxruntime/i.test(path) ||
+            /@xenova/i.test(path) ||
+            /transformers/i.test(path))
+        ) {
+          return true;
+        }
+        // Large model weight / wasm payloads on any origin
+        if (/\.(onnx|wasm)$/i.test(path) && !path.includes("pdf.worker")) {
+          return true;
+        }
+        return false;
+      },
       handler: new NetworkOnly(),
     },
     {
