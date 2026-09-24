@@ -1,10 +1,15 @@
 "use client";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
-import { ResultBar } from "@/components/tools/ResultBar";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
+import {
+  ProcessSuccess,
+  SoftLimitsNote,
+} from "@/components/tools/process";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -21,12 +26,21 @@ export default function ExtractPage() {
   const [result, setResult] = useState<Uint8Array | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const resetAll = () => {
+    setFile(null);
+    setPages(0);
+    setSel("1");
+    setResult(null);
+  };
+
   const onFiles = async (files: File[]) => {
     const f = files.find(isPdfFile);
     if (!f) return toast.error("PDF only");
-    setFile(f); setResult(null);
+    setFile(f);
+    setResult(null);
     const n = await getPageCount(await f.arrayBuffer());
-    setPages(n); setSel(`1-${Math.min(n,1)}`);
+    setPages(n);
+    setSel(`1-${Math.min(n, 1)}`);
   };
 
   const parsePages = (s: string, max: number) => {
@@ -34,10 +48,11 @@ export default function ExtractPage() {
     for (const part of s.split(/[,\s]+/).filter(Boolean)) {
       const m = part.match(/^(\d+)(?:-(\d+))?$/);
       if (!m) throw new Error(`Invalid page selection: ${part}`);
-      const a = Number(m[1]), b = Number(m[2]||m[1]);
-      for (let i=a;i<=b;i++) {
-        if (i<1||i>max) throw new Error(`Page ${i} out of range`);
-        out.push(i-1);
+      const a = Number(m[1]);
+      const b = Number(m[2] || m[1]);
+      for (let i = a; i <= b; i++) {
+        if (i < 1 || i > max) throw new Error(`Page ${i} out of range`);
+        out.push(i - 1);
       }
     }
     return [...new Set(out)];
@@ -53,23 +68,59 @@ export default function ExtractPage() {
       toast.success("Extracted");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <MarketingShell>
-      <ToolShell tool={tool} options={
-        <>
-          <div className="space-y-2">
-            <Label>Pages to extract</Label>
-            <Input value={sel} onChange={(e)=>setSel(e.target.value)} placeholder="1-3,5" />
-            <p className="text-[11px] text-zinc-500">{pages?`Document: ${pages} pages`:"Load a PDF"}</p>
-          </div>
-          <Button className="w-full" disabled={!file||busy} onClick={run}>{busy?"Working…":"Extract"}</Button>
-        </>
-      }>
-        <DropZone accept="application/pdf" onFiles={onFiles} label={file?file.name:"Drop a PDF"} />
-        {result && <ResultBar fileName="extracted.pdf" size={result.byteLength} onDownload={()=>downloadBytes(result,"extracted.pdf")} />}
+      <ToolShell
+        tool={tool}
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!file || busy}
+              onClick={run}
+            >
+              {busy ? "Working…" : "Extract"}
+            </Button>
+          </ToolActionBar>
+        }
+        options={
+          <>
+            <div className="space-y-2">
+              <Label>Pages to extract</Label>
+              <Input
+                value={sel}
+                onChange={(e) => setSel(e.target.value)}
+                placeholder="1-3,5"
+              />
+              <p className="text-[11px] text-zinc-500">
+                {pages ? `Document: ${pages} pages` : "Load a PDF"}
+              </p>
+            </div>
+            <SoftLimitsNote />
+          </>
+        }
+      >
+        <DropZone
+          accept="application/pdf"
+          onFiles={onFiles}
+          label={file ? file.name : "Drop a PDF"}
+          pickerLabel="Choose PDF"
+        />
+        {result && (
+          <ProcessSuccess
+            fileName="extracted.pdf"
+            size={result.byteLength}
+            blob={result}
+            fromTool="extract"
+            onDownload={() => downloadBytes(result, "extracted.pdf")}
+            onProcessAnother={resetAll}
+          />
+        )}
       </ToolShell>
     </MarketingShell>
   );

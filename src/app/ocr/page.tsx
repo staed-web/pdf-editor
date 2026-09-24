@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -120,6 +121,17 @@ export default function OcrPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button className="min-h-11 w-full flex-1" disabled={!file || job.busy} onClick={run}>
+              {job.busy
+                ? "Recognizing…"
+                : searchable
+                  ? "Make searchable PDF"
+                  : "Run OCR (text)"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -176,13 +188,7 @@ export default function OcrPage() {
               </select>
             </div>
             <SoftLimitsNote />
-            <Button className="w-full" disabled={!file || job.busy} onClick={run}>
-              {job.busy
-                ? "Recognizing…"
-                : searchable
-                  ? "Make searchable PDF"
-                  : "Run OCR (text)"}
-            </Button>
+            
           </>
         }
       >
@@ -199,7 +205,13 @@ export default function OcrPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+          showOcrLink={true}
+        />
         {text && (
           <textarea
             className="min-h-48 w-full rounded-2xl border border-zinc-200 bg-white p-4 font-mono text-xs dark:border-zinc-800 dark:bg-zinc-900"

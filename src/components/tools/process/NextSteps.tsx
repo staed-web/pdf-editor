@@ -10,6 +10,13 @@ import {
   Combine,
   Layers,
   ArrowRight,
+  Pencil,
+  MessageSquare,
+  FileType,
+  Scissors,
+  Sparkles,
+  Languages,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,7 +32,21 @@ export type NextStepAction = {
   label: string;
   href: string;
   intent?: HandoffIntent;
-  icon?: "compress" | "protect" | "sign" | "ocr" | "merge" | "flatten" | "other";
+  icon?:
+    | "compress"
+    | "protect"
+    | "sign"
+    | "ocr"
+    | "merge"
+    | "flatten"
+    | "edit"
+    | "split"
+    | "chat"
+    | "word"
+    | "summarize"
+    | "translate"
+    | "redact"
+    | "other";
 };
 
 const ICONS = {
@@ -35,6 +56,13 @@ const ICONS = {
   ocr: ScanText,
   merge: Combine,
   flatten: Layers,
+  edit: Pencil,
+  split: Scissors,
+  chat: MessageSquare,
+  word: FileType,
+  summarize: Sparkles,
+  translate: Languages,
+  redact: EyeOff,
   other: ArrowRight,
 } as const;
 
@@ -60,9 +88,15 @@ export function defaultNextSteps(fromTool: string): NextStepAction[] {
       intent: "sign",
       icon: "sign",
     },
+    edit: {
+      id: "edit",
+      label: "Edit PDF",
+      href: "/edit",
+      icon: "edit",
+    },
     ocr: {
       id: "ocr",
-      label: "OCR",
+      label: "Improve with OCR",
       href: "/ocr",
       icon: "ocr",
     },
@@ -72,21 +106,74 @@ export function defaultNextSteps(fromTool: string): NextStepAction[] {
       href: "/flatten",
       icon: "flatten",
     },
+    merge: {
+      id: "merge",
+      label: "Merge more",
+      href: "/merge",
+      icon: "merge",
+    },
+    split: {
+      id: "split",
+      label: "Split further",
+      href: "/split",
+      icon: "split",
+    },
+    "pdf-to-word": {
+      id: "pdf-to-word",
+      label: "Convert to Word",
+      href: "/pdf-to-word",
+      icon: "word",
+    },
+    "chat-pdf": {
+      id: "chat-pdf",
+      label: "Ask this PDF",
+      href: "/chat-pdf",
+      icon: "chat",
+    },
+    summarize: {
+      id: "summarize",
+      label: "Summarize",
+      href: "/summarize",
+      icon: "summarize",
+    },
+    translate: {
+      id: "translate",
+      label: "Translate",
+      href: "/translate",
+      icon: "translate",
+    },
+    redact: {
+      id: "redact",
+      label: "Redact",
+      href: "/redact",
+      icon: "redact",
+    },
   };
 
   const presets: Record<string, string[]> = {
     merge: ["compress", "protect", "sign"],
-    compress: ["protect", "sign"],
-    ocr: ["compress", "protect", "sign"],
-    protect: ["sign"],
-    redact: ["compress", "protect", "sign"],
+    split: ["compress", "merge", "protect"],
+    compress: ["protect", "sign", "edit"],
+    organize: ["compress", "protect", "sign"],
+    rotate: ["compress", "protect", "edit"],
+    "delete-pages": ["compress", "protect", "sign"],
+    extract: ["compress", "merge", "protect"],
+    protect: ["sign", "compress"],
+    flatten: ["protect", "sign", "compress"],
+    ocr: ["compress", "pdf-to-word", "chat-pdf"],
+    "pdf-to-word": ["compress", "protect"],
+    "pdf-to-jpg": ["compress", "protect", "edit"],
     "jpg-to-pdf": ["compress", "protect", "sign"],
-    split: ["compress", "protect"],
+    "images-to-pdf": ["compress", "protect", "sign"],
+    redact: ["compress", "protect", "sign"],
+    "chat-pdf": ["summarize", "translate", "ocr"],
+    summarize: ["translate", "chat-pdf", "compress"],
+    translate: ["summarize", "chat-pdf", "compress"],
+    batch: ["compress", "protect", "sign"],
+    sign: ["flatten", "protect", "compress"],
+    edit: ["sign", "flatten", "protect"],
     "fill-form": ["flatten", "sign", "protect"],
-    sign: ["flatten", "protect"],
-    flatten: ["protect", "sign"],
-    "pdf-to-word": [],
-    "pdf-to-jpg": [],
+    workflows: ["compress", "protect", "sign"],
   };
 
   const ids = presets[fromTool] ?? ["compress", "protect", "sign"];
@@ -150,7 +237,7 @@ export function NextSteps({
               type="button"
               size="sm"
               variant="outline"
-              className="min-h-9 rounded-full border-emerald-300/80 bg-white/80 dark:border-emerald-800 dark:bg-zinc-950/50"
+              className="min-h-11 rounded-full border-emerald-300/80 bg-white/80 px-3.5 dark:border-emerald-800 dark:bg-zinc-950/50"
               disabled={busyId !== null}
               onClick={() => void go(step)}
             >

@@ -1097,16 +1097,15 @@ export function featuredTools() {
 
 /** Homepage spotlight: Batch + top 8 everyday tools. Full catalog stays on /tools. */
 export function homeSpotlightTools() {
+  // Top 8 everyday tools — Edit, Merge, Compress, Split, PDF→Word, OCR, Ask PDF, Protect
   const order = [
-    "batch",
-    "workflows",
-    "merge",
-    "split",
-    "compress",
     "edit",
-    "jpg-to-pdf",
-    "pdf-to-jpg",
-    "sign",
+    "merge",
+    "compress",
+    "split",
+    "pdf-to-word",
+    "ocr",
+    "chat-pdf",
     "protect",
   ];
   const bySlug = new Map(TOOLS.map((x) => [x.slug, x]));

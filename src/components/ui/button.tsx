@@ -22,9 +22,9 @@ const buttonVariants = cva(
         tool: "h-9 w-9 p-0 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 data-[active=true]:bg-amber-500/15 data-[active=true]:text-amber-600 data-[active=true]:ring-1 data-[active=true]:ring-amber-500/40 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-800 dark:data-[active=true]:text-amber-400",
       },
       size: {
-        default: "h-9 px-3.5 py-2",
+        default: "min-h-11 h-11 px-3.5 py-2",
         sm: "h-8 rounded-md px-2.5 text-xs",
-        lg: "h-11 rounded-xl px-5",
+        lg: "min-h-11 h-11 rounded-xl px-5",
         icon: "h-9 w-9",
       },
     },

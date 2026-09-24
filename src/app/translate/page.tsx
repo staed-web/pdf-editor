@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -208,6 +209,17 @@ export default function TranslatePage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!file || job.busy}
+              onClick={run}
+            >
+              {job.busy ? "Working…" : "Translate"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -256,13 +268,7 @@ export default function TranslatePage() {
               </p>
             )}
             <SoftLimitsNote />
-            <Button
-              className="w-full"
-              disabled={!file || job.busy}
-              onClick={run}
-            >
-              {job.busy ? "Working…" : "Translate"}
-            </Button>
+            
           </>
         }
       >
@@ -279,7 +285,13 @@ export default function TranslatePage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+          showOcrLink={true}
+        />
         {badge && (
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
             {badge}

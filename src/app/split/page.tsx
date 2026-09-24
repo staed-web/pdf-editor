@@ -6,6 +6,7 @@ import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -100,6 +101,17 @@ export default function SplitPage() {
     <MarketingShell>
       <ToolShell
         tool={tool}
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              onClick={run}
+              disabled={!file || job.busy}
+            >
+              {job.busy ? "Splitting…" : "Split PDF"}
+            </Button>
+          </ToolActionBar>
+        }
         options={
           <>
             <div className="space-y-2">
@@ -138,9 +150,6 @@ export default function SplitPage() {
               </div>
             )}
             <SoftLimitsNote />
-            <Button className="w-full" onClick={run} disabled={!file || job.busy}>
-              {job.busy ? "Splitting…" : "Split PDF"}
-            </Button>
           </>
         }
       >
@@ -157,12 +166,19 @@ export default function SplitPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+        />
         {zipReady && (
           <ProcessSuccess
             fileName={downloadName}
+            fromTool="split"
             size={zipReady.reduce((a, b) => a + b.data.byteLength, 0)}
             meta={`${zipReady.length} file(s)`}
+            blob={zipReady.length === 1 ? zipReady[0].data : null}
             onDownload={() => {
               if (zipReady.length === 1)
                 downloadBytes(zipReady[0].data, zipReady[0].name);

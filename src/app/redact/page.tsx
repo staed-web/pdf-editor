@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Search, EyeOff } from "lucide-react";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -187,6 +188,21 @@ export default function RedactPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!file || job.busy || !allRegions.length}
+              onClick={() => {
+                if (hardWipe) setConfirmOpen(true);
+                else void run();
+              }}
+            >
+              <EyeOff className="h-4 w-4" />
+              {job.busy ? "Working…" : "Apply redactions"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -364,17 +380,7 @@ export default function RedactPage() {
               {pages ? ` · ${pages} pages` : " · no file"}
             </p>
             <SoftLimitsNote />
-            <Button
-              className="w-full"
-              disabled={!file || job.busy || !allRegions.length}
-              onClick={() => {
-                if (hardWipe) setConfirmOpen(true);
-                else void run();
-              }}
-            >
-              <EyeOff className="h-4 w-4" />
-              {job.busy ? "Working…" : "Apply redactions"}
-            </Button>
+            
             <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
               <strong>Verify redaction:</strong> after download, open the PDF and
               try selecting or searching the covered text. With hard wipe it
@@ -428,7 +434,12 @@ export default function RedactPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+        />
         {result && (
           <ProcessSuccess
             fileName={result.name}

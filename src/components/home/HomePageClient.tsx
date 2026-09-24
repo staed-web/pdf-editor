@@ -122,10 +122,10 @@ function WebHome() {
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Batch & top tools
+              Top tools
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Batch workspace plus the eight tools most people need — everything else lives on the tools hub.
+              Eight everyday tools up front — Edit, Merge, Compress, Split, Word, OCR, Ask PDF, Protect. Full catalog on the tools hub.
             </p>
           </div>
           <Link

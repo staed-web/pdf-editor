@@ -14,6 +14,7 @@ import {
   TOOLS,
   CATEGORY_ORDER,
   CATEGORY_LABELS,
+  homeSpotlightTools,
   type ToolCategory,
 } from "@/lib/tools";
 
@@ -123,6 +124,37 @@ export default function ToolsIndexPage() {
           <div className="mt-6 sm:mt-8">
             <AdBanner variant="leaderboard" className="w-full max-w-none" />
           </div>
+        )}
+
+        
+        {!q.trim() && cat === "all" && (
+          <section className="mb-8 mt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Popular right now</h2>
+              <span className="text-xs text-[var(--muted)]">Top 8</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {homeSpotlightTools().map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <Link
+                    key={tool.slug}
+                    href={tool.href}
+                    onClick={() => haptic("light")}
+                    className="flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-[var(--hairline)] bg-[var(--card)] px-3 py-3 shadow-[var(--shadow-sm)] transition hover:border-amber-500/40"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/12 text-amber-700 dark:text-amber-300">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{tool.name}</span>
+                      <span className="block truncate text-[11px] text-[var(--muted)]">{tool.short}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         {standalone ? (

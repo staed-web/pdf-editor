@@ -5,8 +5,8 @@ import Link from "next/link";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
-import { ResultBar } from "@/components/tools/ResultBar";
-import { SoftLimitsNote } from "@/components/tools/process";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
+import { ProcessSuccess, SoftLimitsNote } from "@/components/tools/process";
 import { Button } from "@/components/ui/button";
 import { getTool } from "@/lib/tools";
 import { downloadBytes, isPdfFile } from "@/lib/download";
@@ -43,6 +43,11 @@ export default function FlattenPage() {
     }
   });
 
+  const resetAll = () => {
+    setFile(null);
+    setResult(null);
+  };
+
   const run = async () => {
     if (!file) return;
     await runWithFile(file);
@@ -52,6 +57,17 @@ export default function FlattenPage() {
     <MarketingShell>
       <ToolShell
         tool={tool}
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!file || busy}
+              onClick={run}
+            >
+              {busy ? "Working…" : "Flatten & prepare download"}
+            </Button>
+          </ToolActionBar>
+        }
         options={
           <>
             <p className="text-xs text-zinc-500">
@@ -60,9 +76,6 @@ export default function FlattenPage() {
               <Link href="/sign" className="underline">Sign</Link>
               {" → "}Flatten → Download.
             </p>
-            <Button className="w-full" disabled={!file || busy} onClick={run}>
-              {busy ? "Working…" : "Flatten & prepare download"}
-            </Button>
             <Button asChild variant="outline" className="w-full">
               <Link href="/sign">Back to Sign</Link>
             </Button>
@@ -81,10 +94,13 @@ export default function FlattenPage() {
           label={file ? file.name : "Drop a signed or filled PDF"}
         />
         {result && (
-          <ResultBar
+          <ProcessSuccess
             fileName="flattened.pdf"
             size={result.byteLength}
+            blob={result}
+            fromTool="flatten"
             onDownload={() => downloadBytes(result, "flattened.pdf")}
+            onProcessAnother={resetAll}
           />
         )}
       </ToolShell>

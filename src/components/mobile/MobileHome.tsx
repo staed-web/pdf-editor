@@ -35,7 +35,7 @@ function greeting(): string {
 
 /** Installed-PWA app home — large title, bento tools, editor CTA. */
 export function MobileHome() {
-  const featured = useMemo(() => homeSpotlightTools().slice(0, 9), []);
+  const featured = useMemo(() => homeSpotlightTools().slice(0, 8), []);
   const [recent, setRecent] = useState<RecentFileMeta[]>([]);
   const [q, setQ] = useState("");
 
@@ -138,9 +138,9 @@ export function MobileHome() {
             <ArrowRight className="h-5 w-5 shrink-0 text-amber-400" />
           </Link>
 
-          {/* Featured bento */}
+          {/* Top tools bento */}
           <div className="mb-2 flex items-center justify-between">
-            <p className="app-section-label">Featured</p>
+            <p className="app-section-label">Top tools</p>
             <Link
               href="/tools"
               className="text-xs font-semibold text-amber-700 dark:text-amber-400"

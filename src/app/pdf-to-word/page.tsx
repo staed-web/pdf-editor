@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -79,6 +80,13 @@ export default function PdfToWordPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button className="min-h-11 w-full" disabled={!file || job.busy} onClick={run}>
+              {job.busy ? "Converting…" : "Export DOCX"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -107,9 +115,7 @@ export default function PdfToWordPage() {
               </div>
             </div>
             <SoftLimitsNote />
-            <Button className="w-full" disabled={!file || job.busy} onClick={run}>
-              {job.busy ? "Converting…" : "Export DOCX"}
-            </Button>
+            
           </>
         }
       >
@@ -126,10 +132,17 @@ export default function PdfToWordPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+          showOcrLink={true}
+        />
         {result && (
           <ProcessSuccess
             fileName={result.name}
+            fromTool="pdf-to-word"
             size={result.bytes.byteLength}
             blob={result.bytes}
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"

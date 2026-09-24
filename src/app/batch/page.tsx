@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { SoftLimitsNote } from "@/components/tools/process";
 import { Button } from "@/components/ui/button";
@@ -272,6 +273,17 @@ export default function BatchPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!files.length || busy}
+              onClick={runBatch}
+            >
+              {busy ? "Processing…" : `Run on ${Math.min(files.length, SOFT_LIMITS.batchMaxFiles) || ""} file(s)`}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -366,13 +378,7 @@ export default function BatchPage() {
               </div>
             )}
 <SoftLimitsNote kind="batch" />
-            <Button
-              className="w-full"
-              disabled={!files.length || busy}
-              onClick={runBatch}
-            >
-              {busy ? "Processing…" : `Run on ${Math.min(files.length, SOFT_LIMITS.batchMaxFiles) || ""} file(s)`}
-            </Button>
+            
             {busy && (
               <Button className="w-full" variant="outline" onClick={cancel}>
                 Cancel

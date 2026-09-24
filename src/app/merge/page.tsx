@@ -27,6 +27,7 @@ import {
   classifyProcessError,
 } from "@/lib/pdf/process-ux";
 import { formatBytes } from "@/lib/utils";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 
 const tool = getTool("merge")!;
 
@@ -143,6 +144,27 @@ export default function MergePage() {
     <MarketingShell>
       <ToolShell
         tool={tool}
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 flex-1"
+              onClick={run}
+              disabled={job.busy || files.length < 2}
+            >
+              Merge {files.length || ""} PDFs
+            </Button>
+            {files.length > 0 && (
+              <Button
+                variant="outline"
+                className="min-h-11"
+                onClick={resetAll}
+                disabled={job.busy}
+              >
+                Clear
+              </Button>
+            )}
+          </ToolActionBar>
+        }
         options={
           <>
             <div className="flex items-center justify-between gap-3">
@@ -179,7 +201,12 @@ export default function MergePage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+        />
         {result && (
           <ProcessSuccess
             fileName={resultName}
@@ -191,16 +218,6 @@ export default function MergePage() {
             onProcessAnother={resetAll}
           />
         )}
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={run} disabled={job.busy || files.length < 2}>
-            Merge {files.length || ""} PDFs
-          </Button>
-          {files.length > 0 && (
-            <Button variant="outline" onClick={resetAll} disabled={job.busy}>
-              Clear
-            </Button>
-          )}
-        </div>
       </ToolShell>
     </MarketingShell>
   );

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { FileQueue } from "@/components/tools/FileQueue";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,17 @@ export default function Page() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!files.length || job.busy}
+              onClick={run}
+            >
+              {job.busy ? "Building…" : "Create PDF"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -105,19 +117,13 @@ export default function Page() {
               </div>
             </div>
             <SoftLimitsNote />
-            <Button
-              className="w-full"
-              disabled={!files.length || job.busy}
-              onClick={run}
-            >
-              {job.busy ? "Building…" : "Create PDF"}
-            </Button>
+            
           </>
         }
       >
         <DropZone
           accept="image/jpeg,.jpg,.jpeg"
-          multiple
+          multiple capture="environment"
           onFiles={(fs) => {
             const imgs = fs.filter(isImageFile);
             if (!imgs.length) return toast.error("Images only");
@@ -142,7 +148,12 @@ export default function Page() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+        />
         {result && (
           <ProcessSuccess
             fileName={result.name}

@@ -42,7 +42,7 @@ export default function SignPage() {
             Draw, type, or upload a signature and place it on any page — powered
             by the InstantPDFEdit editor. Files stay in your browser.
           </p>
-          <Button asChild size="lg" className="mx-auto mt-6 flex w-full max-w-sm">
+          <Button asChild size="lg" className="mx-auto mt-6 flex min-h-12 w-full max-w-sm">
             <Link href="/edit">1. Open editor to sign</Link>
           </Button>
 
@@ -83,10 +83,10 @@ export default function SignPage() {
               </li>
             </ol>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="outline">
+              <Button asChild variant="outline" className="min-h-11">
                 <Link href="/fill-form">Fill form first</Link>
               </Button>
-              <Button asChild size="sm" variant="outline">
+              <Button asChild variant="outline" className="min-h-11">
                 <Link href="/flatten">Go to Flatten</Link>
               </Button>
             </div>

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,6 +246,21 @@ export default function ChatPdfPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button
+              className="min-h-11 w-full flex-1"
+              disabled={!file || !q.trim() || job.busy}
+              onClick={() => void ask()}
+            >
+              {job.busy
+                ? "Working…"
+                : indexReady
+                  ? "Ask"
+                  : "Ask"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -297,17 +314,7 @@ export default function ChatPdfPage() {
               />
             </div>
             <SoftLimitsNote />
-            <Button
-              className="w-full"
-              disabled={!file || !q.trim() || job.busy}
-              onClick={() => void ask()}
-            >
-              {job.busy
-                ? "Working…"
-                : indexReady
-                  ? "Ask"
-                  : "Ask"}
-            </Button>
+            
           </>
         }
       >
@@ -324,7 +331,13 @@ export default function ChatPdfPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void ask()}
+          onChooseFile={resetAll}
+          showOcrLink
+        />
         {badge && (
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
             {badge}
@@ -368,22 +381,40 @@ export default function ChatPdfPage() {
           </div>
         )}
         {result && (
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <span className="text-zinc-600 dark:text-zinc-400">
-              Transcript ready ({result.name})
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                downloadBytes(result.bytes, result.name, result.mime)
-              }
-            >
-              Download .md
-            </Button>
-            <Button size="sm" variant="ghost" onClick={resetAll}>
-              Start over
-            </Button>
+          <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Transcript ready ({result.name})
+              </span>
+              <Button
+                className="min-h-11"
+                variant="secondary"
+                onClick={() =>
+                  downloadBytes(result.bytes, result.name, result.mime)
+                }
+              >
+                Download notes
+              </Button>
+              <Button className="min-h-11" variant="outline" onClick={resetAll}>
+                Start over
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                Next steps
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline" className="min-h-11 rounded-full">
+                  <Link href="/summarize">Summarize</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="min-h-11 rounded-full">
+                  <Link href="/translate">Translate</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="min-h-11 rounded-full">
+                  <Link href="/ocr">Improve with OCR</Link>
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </ToolShell>

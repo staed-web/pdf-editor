@@ -5,7 +5,8 @@ import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
 import { DropZone } from "@/components/tools/DropZone";
 import { FileQueue } from "@/components/tools/FileQueue";
-import { ResultBar } from "@/components/tools/ResultBar";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
+import { ProcessSuccess, SoftLimitsNote } from "@/components/tools/process";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { getTool } from "@/lib/tools";
@@ -20,6 +21,11 @@ export default function Page() {
   const [pageSize, setPageSize] = useState<"auto"|"a4"|"letter">("auto");
   const [result, setResult] = useState<Uint8Array | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const resetAll = () => {
+    clear();
+    setResult(null);
+  };
 
   const run = async () => {
     if (!files.length) return toast.error("Add images");
@@ -38,7 +44,11 @@ export default function Page() {
 
   return (
     <MarketingShell>
-      <ToolShell tool={tool} options={
+      <ToolShell tool={tool} actionBar={
+          <ToolActionBar>
+            <Button className="min-h-11 w-full flex-1" disabled={!files.length||busy} onClick={run}>{busy?"Building…":"Create PDF"}</Button>
+          </ToolActionBar>
+        } options={
         <>
           <div className="space-y-2">
             <Label>Page size</Label>
@@ -48,13 +58,22 @@ export default function Page() {
               ))}
             </div>
           </div>
-          <Button className="w-full" disabled={!files.length||busy} onClick={run}>{busy?"Building…":"Create PDF"}</Button>
+          <SoftLimitsNote />
         </>
       }>
-        <DropZone accept="image/*,.jpg,.jpeg,.png,.webp" multiple onFiles={(fs)=>{ const imgs=fs.filter(isImageFile); if(!imgs.length) return toast.error("Images only"); addFiles(imgs); setResult(null); }} label="Drop images (JPG, PNG, WebP)" />
+        <DropZone accept="image/*,.jpg,.jpeg,.png,.webp" multiple capture="environment" onFiles={(fs)=>{ const imgs=fs.filter(isImageFile); if(!imgs.length) return toast.error("Images only"); addFiles(imgs); setResult(null); }} label="Drop images (JPG, PNG, WebP)" pickerLabel="Choose images" />
         <FileQueue files={files} onRemove={remove} onReorder={reorder} />
-        {result && <ResultBar fileName="images.pdf" size={result.byteLength} onDownload={()=>downloadBytes(result,"images.pdf")} />}
-        {files.length>0 && <Button variant="outline" onClick={()=>{clear();setResult(null);}}>Clear</Button>}
+        {result && (
+          <ProcessSuccess
+            fileName="images.pdf"
+            size={result.byteLength}
+            blob={result}
+            fromTool="images-to-pdf"
+            onDownload={() => downloadBytes(result, "images.pdf")}
+            onProcessAnother={resetAll}
+          />
+        )}
+        {files.length>0 && <Button variant="outline" className="min-h-11" onClick={resetAll}>Clear</Button>}
       </ToolShell>
     </MarketingShell>
   );

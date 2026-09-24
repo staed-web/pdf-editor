@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketingShell } from "@/components/site/MarketingShell";
 import { ToolShell } from "@/components/tools/ToolShell";
+import { ToolActionBar } from "@/components/tools/ToolActionBar";
 import { DropZone } from "@/components/tools/DropZone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -120,6 +121,13 @@ export default function CompressPage() {
   return (
     <MarketingShell>
       <ToolShell
+        actionBar={
+          <ToolActionBar>
+            <Button className="min-h-11 w-full" disabled={!file || job.busy} onClick={run}>
+              {job.busy ? "Compressing…" : "Compress"}
+            </Button>
+          </ToolActionBar>
+        }
         tool={tool}
         options={
           <>
@@ -184,9 +192,7 @@ export default function CompressPage() {
               {presetMeta.linearize ? " · structure rewrite" : ""}
             </p>
             <SoftLimitsNote />
-            <Button className="w-full" disabled={!file || job.busy} onClick={run}>
-              {job.busy ? "Compressing…" : "Compress"}
-            </Button>
+            
           </>
         }
       >
@@ -203,7 +209,12 @@ export default function CompressPage() {
             onCancel={job.cancel}
           />
         )}
-        <ProcessError error={job.error} onDismiss={job.resetError} />
+        <ProcessError
+          error={job.error}
+          onDismiss={job.resetError}
+          onRetry={() => void run()}
+          onChooseFile={resetAll}
+        />
         {result && (
           <ProcessSuccess
             fileName={result.name}
