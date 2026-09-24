@@ -49,6 +49,10 @@ export function ProcessSuccess({
     beforeAfter && beforeAfter.before > 0
       ? Math.round(((beforeAfter.before - beforeAfter.after) / beforeAfter.before) * 100)
       : null;
+  const ratioPct =
+    beforeAfter && beforeAfter.before > 0
+      ? Math.min(100, Math.round((beforeAfter.after / beforeAfter.before) * 100))
+      : null;
 
   return (
     <div
@@ -58,30 +62,48 @@ export function ProcessSuccess({
       )}
     >
       {beforeAfter && (
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-emerald-200/80 bg-white/70 p-3 text-sm dark:border-emerald-900/40 dark:bg-zinc-950/40 sm:grid-cols-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">Before</p>
-            <p className="font-semibold">{formatBytes(beforeAfter.before)}</p>
+        <div className="space-y-2 rounded-xl border border-emerald-200/80 bg-white/70 p-3 text-sm dark:border-emerald-900/40 dark:bg-zinc-950/40">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+                Before → after
+              </p>
+              <p className="mt-0.5 font-semibold tabular-nums">
+                {formatBytes(beforeAfter.before)}
+                <span className="mx-1.5 text-zinc-400">→</span>
+                {formatBytes(beforeAfter.after)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+                {saved != null && saved > 0 ? "Saved" : saved != null && saved < 0 ? "Grew" : "Change"}
+              </p>
+              <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                {saved != null && saved !== 0
+                  ? `${saved > 0 ? "−" : "+"}${formatBytes(Math.abs(saved))}${
+                      pct != null ? ` (${Math.abs(pct)}%)` : ""
+                    }`
+                  : "Similar size"}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">After</p>
-            <p className="font-semibold">{formatBytes(beforeAfter.after)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">Saved</p>
-            <p className="font-semibold">
-              {saved != null && saved > 0 ? formatBytes(saved) : "—"}
-              {pct != null && saved != null && saved > 0 ? ` (${pct}%)` : ""}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">Ratio</p>
-            <p className="font-semibold">
-              {beforeAfter.before
-                ? `${Math.round((beforeAfter.after / beforeAfter.before) * 100)}%`
-                : "—"}
-            </p>
-          </div>
+          {ratioPct != null && (
+            <div className="space-y-1">
+              <div className="h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all dark:bg-emerald-400"
+                  style={{ width: `${Math.max(4, ratioPct)}%` }}
+                  title={`Result is ${ratioPct}% of original size`}
+                />
+              </div>
+              <p className="text-[10px] text-zinc-500">
+                Result is {ratioPct}% of the original size
+                {saved != null && saved <= 0
+                  ? " · text-heavy PDFs often shrink less"
+                  : ""}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

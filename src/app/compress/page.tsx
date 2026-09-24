@@ -117,6 +117,10 @@ export default function CompressPage() {
   };
 
   const presetMeta = COMPRESS_PRESETS.find((p) => p.id === preset)!;
+  const resultPreset =
+    result &&
+    (COMPRESS_PRESETS.find((p) => p.id === result.presetId) ||
+      COMPRESS_PRESETS.find((p) => p.id === "balanced")!);
 
   return (
     <MarketingShell>
@@ -132,12 +136,12 @@ export default function CompressPage() {
         options={
           <>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Downsamples long edges and re-encodes pages as JPEG. Best for
-              scans/photos; text-only files may not shrink much. Web presets also
-              rewrite structure (best-effort — not Acrobat Fast Web View).
+              Shrinks PDFs in your browser by redrawing pages as JPEG images.
+              Great for scans and photos. Text-only files may not get much
+              smaller. All presets are <strong>lossy</strong> — not lossless.
             </p>
             <div className="space-y-2">
-              <Label>Optimizer preset</Label>
+              <Label>Size vs quality</Label>
               <div className="flex flex-col gap-1.5">
                 {COMPRESS_PRESETS.map((p) => (
                   <button
@@ -162,6 +166,9 @@ export default function CompressPage() {
                     </span>
                     <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
                       {p.hint}
+                    </span>
+                    <span className="mt-1 block text-[10px] font-medium text-amber-800/80 dark:text-amber-300/80">
+                      {p.fidelity}
                     </span>
                   </button>
                 ))}
@@ -188,11 +195,10 @@ export default function CompressPage() {
               </div>
             )}
             <p className="text-[11px] text-[var(--muted)]">
-              Active: JPEG q={presetMeta.q} · max edge {presetMeta.maxEdge}px
+              Active: {presetMeta.label} · {presetMeta.fidelity}
               {presetMeta.linearize ? " · structure rewrite" : ""}
             </p>
             <SoftLimitsNote />
-            
           </>
         }
       >
@@ -219,8 +225,8 @@ export default function CompressPage() {
           <ProcessSuccess
             fileName={result.name}
             size={result.newSize}
-            meta={`${result.pageCount} pages · ${result.presetId} · JPEG q=${result.jpegQuality}${
-              result.linearized ? " · linearized" : ""
+            meta={`${result.pageCount} pages · ${resultPreset?.label || result.presetId} (lossy)${
+              result.linearized ? " · structure rewrite" : ""
             }`}
             blob={result.bytes}
             beforeAfter={{ before: result.originalSize, after: result.newSize }}

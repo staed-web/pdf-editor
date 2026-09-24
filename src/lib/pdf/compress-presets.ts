@@ -1,6 +1,6 @@
 /**
  * Optimizer presets for /compress — client-side downsample + JPEG re-encode.
- * Capability inspiration only; no proprietary binaries.
+ * All presets are lossy (page raster → JPEG). No proprietary binaries.
  */
 
 export type CompressPresetId = "web" | "balanced" | "max" | "print";
@@ -10,9 +10,12 @@ export type CompressQualityLegacy = "low" | "medium" | "high";
 
 export type CompressPreset = {
   id: CompressPresetId;
+  /** Primary label shown to users (Email / Web / High quality / …) */
   label: string;
   short: string;
   hint: string;
+  /** Plain note that this is lossy — never claim lossless */
+  fidelity: string;
   /** JPEG quality 0–1 */
   q: number;
   /** Render scale before max-edge clamp */
@@ -26,9 +29,10 @@ export type CompressPreset = {
 export const COMPRESS_PRESETS: CompressPreset[] = [
   {
     id: "web",
-    label: "Web / Mobile",
-    short: "Aggressive",
-    hint: "Smallest practical for email & phones — heavy downsample + structure rewrite.",
+    label: "Email",
+    short: "Small",
+    hint: "Best for email attachments & phones — smaller files, softer detail.",
+    fidelity: "Lossy · JPEG ~40% · max edge 1024px",
     q: 0.4,
     scale: 1.0,
     maxEdge: 1024,
@@ -36,33 +40,36 @@ export const COMPRESS_PRESETS: CompressPreset[] = [
   },
   {
     id: "balanced",
-    label: "Balanced",
+    label: "Web",
     short: "Default",
-    hint: "Good size vs clarity for everyday sharing.",
+    hint: "Everyday sharing online — good balance of size and clarity.",
+    fidelity: "Lossy · JPEG ~58% · max edge 1600px",
     q: 0.58,
     scale: 1.35,
     maxEdge: 1600,
     linearize: true,
   },
   {
-    id: "max",
-    label: "Max shrink",
-    short: "Tiniest",
-    hint: "Push size down hard — scans/photos; text may look soft.",
-    q: 0.3,
-    scale: 0.85,
-    maxEdge: 880,
-    linearize: true,
-  },
-  {
     id: "print",
-    label: "Print-ish",
-    short: "Gentler",
-    hint: "Higher DPI/JPEG quality for print or archival sharing.",
+    label: "High quality",
+    short: "Clearer",
+    hint: "Keeps more detail for printing or important docs — larger file.",
+    fidelity: "Lossy · JPEG ~82% · max edge 2800px",
     q: 0.82,
     scale: 1.85,
     maxEdge: 2800,
     linearize: false,
+  },
+  {
+    id: "max",
+    label: "Smallest",
+    short: "Max shrink",
+    hint: "Push size down hard for scans/photos — text may look soft.",
+    fidelity: "Lossy · JPEG ~30% · max edge 880px",
+    q: 0.3,
+    scale: 0.85,
+    maxEdge: 880,
+    linearize: true,
   },
 ];
 
@@ -98,23 +105,23 @@ export function recommendCompressPreset(opts: {
   if (mb >= 12 || perPage >= 1.2 * 1024 * 1024) {
     return {
       id: "web",
-      reason: "Large file — Web/Mobile usually shrinks scans & photo pages most.",
+      reason: "Large file — Email usually shrinks scans & photo pages most.",
     };
   }
   if (mb >= 4 || perPage >= 400 * 1024) {
     return {
       id: "max",
-      reason: "Bulky pages — Max shrink if you need the smallest shareable PDF.",
+      reason: "Bulky pages — Smallest if you need the tiniest shareable PDF.",
     };
   }
   if (mb < 0.4 && pages <= 5) {
     return {
       id: "print",
-      reason: "Already small — Print-ish keeps quality if you need higher fidelity.",
+      reason: "Already small — High quality keeps more detail if you need it.",
     };
   }
   return {
     id: "balanced",
-    reason: "Balanced is a solid default for everyday sharing.",
+    reason: "Web is a solid default for everyday sharing.",
   };
 }
