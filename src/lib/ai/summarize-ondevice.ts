@@ -116,7 +116,7 @@ async function summarizeWithBrowserApi(
       throwIfAborted(signal);
       onProgress?.(
         45 + Math.round((i / Math.max(chunks.length, 1)) * 50),
-        `Browser summarize ${i + 1}/${chunks.length}…`
+        `Summarizing on your device… ${i + 1}/${chunks.length}`
       );
       partials.push((await summarizer.summarize(chunks[i])).trim());
     }
@@ -309,12 +309,34 @@ export async function summarizeOnDevice(
 export async function probeSummarizeEngine(): Promise<{
   browserSummarizer: boolean;
   label: string;
+  detail: string;
 }> {
   const browserSummarizer = await isSummarizerUsable();
+  if (browserSummarizer) {
+    return {
+      browserSummarizer: true,
+      label: "On-device browser AI available",
+      detail:
+        "Default: summarize on your device with browser AI. Optional larger offline model is off unless you turn it on.",
+    };
+  }
   return {
-    browserSummarizer,
-    label: browserSummarizer
-      ? "Private · on your device"
-      : "Private · on your device",
+    browserSummarizer: false,
+    label: "Quick outline · optional larger model",
+    detail:
+      "On-device browser AI isn’t available here. You’ll get a quick outline from key sentences. You can optionally download a larger offline summary model (~230 MB) — never starts automatically.",
   };
+}
+
+/** Human-readable badge for a completed summarize run. */
+export function summarizeMethodBadge(method: SummarizeMethod): string {
+  switch (method) {
+    case "browser-summarizer":
+      return "On-device browser AI · private";
+    case "xenova-distilbart":
+      return "Optional offline model · private";
+    case "rules-heuristic":
+    default:
+      return "Quick outline · private · on your device";
+  }
 }

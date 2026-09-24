@@ -225,7 +225,7 @@ export async function createBrowserSummarizer(opts: {
             const pct = Math.min(40, Math.round(ev.loaded * 40));
             opts.onProgress?.(
               pct,
-              `Downloading browser summarizer… ${Math.round(ev.loaded * 100)}%`
+              `Preparing on-device summary… ${Math.round(ev.loaded * 100)}%`
             );
           }
         }) as EventListener);
@@ -236,4 +236,54 @@ export async function createBrowserSummarizer(opts: {
   } catch {
     return null;
   }
+}
+
+/** Detect Chrome / Edge Translator API (global Translator). */
+export function getTranslatorCtor(): {
+  availability?: (opts?: Record<string, unknown>) => Promise<unknown>;
+  create: (opts?: Record<string, unknown>) => Promise<BrowserTranslator>;
+} | null {
+  if (typeof globalThis === "undefined") return null;
+  const g = globalThis as Record<string, unknown>;
+  if (typeof g.Translator === "object" && g.Translator) {
+    return g.Translator as ReturnType<typeof getTranslatorCtor>;
+  }
+  const ai = g.ai as Record<string, unknown> | undefined;
+  if (
+    ai?.translator &&
+    typeof (ai.translator as { create?: unknown }).create === "function"
+  ) {
+    return ai.translator as ReturnType<typeof getTranslatorCtor>;
+  }
+  return null;
+}
+
+export type BrowserTranslator = {
+  translate: (text: string) => Promise<string>;
+  destroy?: () => void;
+};
+
+export async function translatorAvailability(
+  sourceLanguage: string,
+  targetLanguage: string
+): Promise<Availability> {
+  const ctor = getTranslatorCtor();
+  if (!ctor) return "unavailable";
+  try {
+    if (typeof ctor.availability === "function") {
+      return asAvailability(
+        await ctor.availability({ sourceLanguage, targetLanguage })
+      );
+    }
+    return "available";
+  } catch {
+    return "unavailable";
+  }
+}
+
+export async function isTranslatorUsable(
+  sourceLanguage = "en",
+  targetLanguage = "es"
+): Promise<boolean> {
+  return isUsable(await translatorAvailability(sourceLanguage, targetLanguage));
 }

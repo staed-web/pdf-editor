@@ -372,7 +372,7 @@ function basicSearchAnswer(
     citations,
     confidence: scored[0]?.score ? Math.min(1, scored[0].score / 8) : 0,
     method: "basic-search",
-    engineLabel: "Private · on your device",
+    engineLabel: "Basic search · private · on your device",
   };
 }
 
@@ -442,7 +442,7 @@ export async function answerWithIndex(
       citations,
       confidence: scored[0]?.score ? Math.min(1, 0.5 + scored[0].score / 10) : 0.5,
       method: "browser-prompt",
-      engineLabel: "Private · on your device",
+      engineLabel: "On-device browser AI · private",
     };
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
@@ -483,16 +483,27 @@ export async function chatPdfOnDevice(
   return { answer, index };
 }
 
-/** Probe Prompt API without downloading models when possible. */
+/** Probe on-device browser AI without downloading models when possible. */
 export async function probeChatEngine(): Promise<{
   browserAi: boolean;
+  /** Short status for the capability banner. */
   label: string;
+  /** Plain-language explanation of what Ask will do. */
+  detail: string;
 }> {
   const browserAi = await isLanguageModelUsable();
+  if (browserAi) {
+    return {
+      browserAi: true,
+      label: "On-device browser AI available",
+      detail:
+        "Answers use on-device browser AI when it can. If it can’t, Ask PDF falls back to basic search (keyword matching) with page citations — still private, nothing uploaded.",
+    };
+  }
   return {
-    browserAi,
-    label: browserAi
-      ? "Private · on your device"
-      : "Private · on your device",
+    browserAi: false,
+    label: "Basic search mode",
+    detail:
+      "On-device browser AI isn’t available in this browser. Ask PDF uses basic search (keyword matching) with page citations. Still private — nothing is uploaded.",
   };
 }

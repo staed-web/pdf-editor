@@ -11,6 +11,11 @@ import {
   throwIfAborted,
   type ProgressCb,
 } from "./transformers-runtime";
+import {
+  getTranslatorCtor,
+  isTranslatorUsable,
+  translatorAvailability,
+} from "./chrome-ai";
 
 export type TranslateProgress = (pct: number, label: string) => void;
 
@@ -120,7 +125,7 @@ function unwrapTranslation(
   return (out.translation_text || "").trim();
 }
 
-/** Chrome / Edge experimental Translator API */
+/** Chrome / Edge built-in Translator API (preferred path). */
 async function tryBrowserTranslator(
   text: string,
   sourceLanguage: string,
@@ -129,49 +134,48 @@ async function tryBrowserTranslator(
   signal?: AbortSignal
 ): Promise<string | null> {
   throwIfAborted(signal);
+  const ctor = getTranslatorCtor();
+  if (!ctor) return null;
   try {
-    // @ts-expect-error experimental Translator API
-    if (typeof Translator === "undefined") return null;
     onProgress?.(5, "Translating on your device…");
-    // @ts-expect-error experimental
-    const availability = await Translator.availability?.({
+    const availability = await translatorAvailability(
       sourceLanguage,
-      targetLanguage,
-    });
-    if (
-      availability === "unavailable" ||
-      availability === "no" ||
-      availability === false
-    ) {
+      targetLanguage
+    );
+    if (availability === "unavailable" || availability === "no") {
       return null;
     }
-    // @ts-expect-error experimental
-    const translator = await Translator.create({
+    const translator = await ctor.create({
       sourceLanguage,
       targetLanguage,
+      signal,
       monitor(m: EventTarget) {
         m.addEventListener("downloadprogress", ((e: Event) => {
           const ev = e as unknown as { loaded?: number; total?: number };
           if (ev.total && ev.loaded != null) {
             const pct = Math.round((ev.loaded / ev.total) * 35) + 5;
-            onProgress?.(pct, "Downloading browser language pack…");
+            onProgress?.(pct, "Preparing on-device language pack…");
           }
         }) as EventListener);
       },
     });
     throwIfAborted(signal);
-    // Translate in chunks to avoid hard limits
     const parts = chunkText(text, 3500, 0);
     const outs: string[] = [];
     for (let i = 0; i < parts.length; i++) {
       throwIfAborted(signal);
       onProgress?.(
         40 + Math.round((i / Math.max(parts.length, 1)) * 55),
-        `Browser translate ${i + 1}/${parts.length}…`
+        `Translating on your device… ${i + 1}/${parts.length}`
       );
       outs.push(await translator.translate(parts[i]));
     }
     onProgress?.(100, "Translation ready");
+    try {
+      translator.destroy?.();
+    } catch {
+      /* ignore */
+    }
     return outs.join("\n\n");
   } catch {
     return null;
@@ -243,7 +247,7 @@ function glossaryStub(text: string, targetLang: string): string {
       return tok;
     })
     .join("");
-  return `[Basic glossary → ${targetLang}]\n\n${out}`;
+  return `[Basic glossary (word list, not AI) → ${targetLang}]\n\n${out}`;
 }
 
 export function resolveMarianPair(
@@ -304,7 +308,7 @@ export async function translateOnDevice(
     if (pair) {
       onProgress?.(
         3,
-        `Loading on-device model ${pair.modelId} (${pair.sizeLabel}, cached after first run)…`
+        `Loading offline language pack (${pair.sizeLabel}, cached after first use)…`
       );
       const downloadPct: ProgressCb = (info) => {
         throwIfAborted(signal);
@@ -325,7 +329,7 @@ export async function translateOnDevice(
         throwIfAborted(signal);
         onProgress?.(
           45 + Math.round((i / Math.max(parts.length, 1)) * 50),
-          `On-device translate ${i + 1}/${parts.length}…`
+          `Translating offline… ${i + 1}/${parts.length}`
         );
         outs.push(unwrapTranslation(await translator(parts[i])));
       }
@@ -338,11 +342,63 @@ export async function translateOnDevice(
     }
   }
 
-  // 3. Glossary stub — clearly not real MT
-  onProgress?.(90, "Falling back to offline glossary (not real MT)…");
+  // 3. Glossary stub — clearly NOT AI / not real machine translation
+  onProgress?.(90, "Using basic glossary (word list — not full translation)…");
   const stub = glossaryStub(cleaned, targetLang);
-  onProgress?.(100, "Glossary stub ready");
+  onProgress?.(100, "Basic glossary ready");
   return { text: stub, method: "glossary" };
+}
+
+/** Probe which translation path this browser can use. */
+export async function probeTranslateEngine(
+  sourceLang = "en",
+  targetLang = "hi"
+): Promise<{
+  browserTranslator: boolean;
+  marianAvailable: boolean;
+  label: string;
+  detail: string;
+}> {
+  const browserTranslator = await isTranslatorUsable(sourceLang, targetLang);
+  const marianAvailable = !!resolveMarianPair(sourceLang, targetLang);
+  if (browserTranslator) {
+    return {
+      browserTranslator: true,
+      marianAvailable,
+      label: "On-device browser AI available",
+      detail:
+        "Default: translate with on-device browser AI. If needed, an offline language pack may download once (then cached). Basic glossary is a last resort — not AI.",
+    };
+  }
+  if (marianAvailable) {
+    const pair = resolveMarianPair(sourceLang, targetLang)!;
+    return {
+      browserTranslator: false,
+      marianAvailable: true,
+      label: "Offline language pack available",
+      detail: `On-device browser AI isn’t available here. We’ll use an offline language pack (${pair.sizeLabel} on first use, then cached). If that fails, a basic glossary (not AI) is the fallback.`,
+    };
+  }
+  return {
+    browserTranslator: false,
+    marianAvailable: false,
+    label: "Basic glossary fallback",
+    detail:
+      "No on-device browser AI or offline pack for this language pair. Translation will use a basic glossary (word list) — not full AI translation. Still private, nothing uploaded.",
+  };
+}
+
+/** Human-readable badge for a completed translate run. */
+export function translateMethodBadge(method: TranslateMethod): string {
+  switch (method) {
+    case "browser":
+      return "On-device browser AI · private";
+    case "on-device":
+      return "Offline language pack · private";
+    case "glossary":
+    default:
+      return "Basic glossary · not AI · on your device";
+  }
 }
 
 /** Keep for any older callers; now delegates to translateOnDevice. */
