@@ -75,6 +75,8 @@ export default function BatchPage() {
   const [items, setItems] = useState<Record<string, BatchItem>>({});
   const [busy, setBusy] = useState(false);
   const [overall, setOverall] = useState(0);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
   const cancelRef = useRef(false);
 
   const totalBytes = useMemo(
@@ -108,6 +110,20 @@ export default function BatchPage() {
       return next;
     });
   }, [files]);
+
+  useEffect(() => {
+    // Reset per-file status when operation/OCR lang changes so the queue feels like a fresh run.
+    setItems((prev) => {
+      const next: Record<string, BatchItem> = {};
+      for (const id of Object.keys(prev)) {
+        next[id] = { id, status: "queued" };
+      }
+      return next;
+    });
+    setOverall(0);
+    setFinished(false);
+    setCurrentFile(null);
+  }, [op, ocrLang]);
 
   const updateItem = (id: string, patch: Partial<BatchItem>) => {
     setItems((prev) => ({
@@ -186,7 +202,9 @@ export default function BatchPage() {
 
     cancelRef.current = false;
     setBusy(true);
+    setFinished(false);
     setOverall(5);
+    setCurrentFile(null);
 
     const workList = files.slice(0, SOFT_LIMITS.batchMaxFiles);
     const skipped = files.slice(SOFT_LIMITS.batchMaxFiles);
@@ -198,8 +216,11 @@ export default function BatchPage() {
     }
 
     let doneCount = 0;
+    let okCount = 0;
+    let failCount = 0;
     for (const f of workList) {
       if (cancelRef.current) break;
+      setCurrentFile(f.name);
       updateItem(f.id, { status: "running", error: undefined, outputs: undefined });
       try {
         const outputs = await processOne(f.file);
@@ -208,23 +229,69 @@ export default function BatchPage() {
           break;
         }
         updateItem(f.id, { status: "done", outputs });
+        okCount += 1;
       } catch (e) {
         const info = classifyProcessError(e);
         updateItem(f.id, {
           status: "error",
           error: info.message,
         });
+        failCount += 1;
       }
       doneCount += 1;
       setOverall(Math.round((doneCount / workList.length) * 100));
     }
 
+    setCurrentFile(null);
     setBusy(false);
+    setFinished(!cancelRef.current);
     if (cancelRef.current) {
       toast.message("Batch cancelled");
+    } else if (okCount === 0 && failCount > 0) {
+      toast.error("Batch finished — all files failed");
+    } else if (failCount > 0) {
+      toast.message(`Batch finished — ${okCount} ready, ${failCount} failed`);
     } else {
-      toast.success("Batch finished");
+      toast.success(`Batch finished — ${okCount} file${okCount === 1 ? "" : "s"} ready for ZIP`);
     }
+  };
+
+  const retryFailed = async () => {
+    const failed = files.filter((f) => items[f.id]?.status === "error");
+    if (!failed.length) return;
+    cancelRef.current = false;
+    setBusy(true);
+    setFinished(false);
+    setOverall(5);
+    let doneCount = 0;
+    let okCount = 0;
+    for (const f of failed) {
+      if (cancelRef.current) break;
+      setCurrentFile(f.name);
+      updateItem(f.id, { status: "running", error: undefined, outputs: undefined });
+      try {
+        const outputs = await processOne(f.file);
+        if (cancelRef.current) {
+          updateItem(f.id, { status: "queued" });
+          break;
+        }
+        updateItem(f.id, { status: "done", outputs });
+        okCount += 1;
+      } catch (e) {
+        const info = classifyProcessError(e);
+        updateItem(f.id, { status: "error", error: info.message });
+      }
+      doneCount += 1;
+      setOverall(Math.round((doneCount / failed.length) * 100));
+    }
+    setCurrentFile(null);
+    setBusy(false);
+    setFinished(!cancelRef.current);
+    toast.message(
+      okCount
+        ? `Retry finished — ${okCount} recovered`
+        : "Retry finished — still failing"
+    );
   };
 
   const cancel = () => {
@@ -237,6 +304,8 @@ export default function BatchPage() {
     setItems({});
     setOverall(0);
     setBusy(false);
+    setFinished(false);
+    setCurrentFile(null);
   };
 
   const doneOutputs = useMemo(() => {
@@ -462,11 +531,32 @@ export default function BatchPage() {
           </div>
         )}
 
+        {files.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-[var(--hairline)] bg-[var(--card)]/60 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+              Multi-file workspace
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Drop several PDFs, pick one operation for the whole queue, then
+              download a single ZIP. Everything stays on this device.
+            </p>
+            <p className="mt-3 text-[11px] text-zinc-500">
+              Tip: for multi-step sequences on one file, use{" "}
+              <Link href="/workflows" className="underline underline-offset-2">
+                Action Wizard
+              </Link>
+              .
+            </p>
+          </div>
+        )}
+
         {busy && (
           <div className="rounded-2xl border border-[var(--hairline)] bg-[var(--card)] p-4">
-            <div className="mb-1.5 flex justify-between text-xs text-zinc-500">
-              <span>Batch progress</span>
-              <span className="tabular-nums">{overall}%</span>
+            <div className="mb-1.5 flex justify-between gap-3 text-xs text-zinc-500">
+              <span className="min-w-0 truncate">
+                {currentFile ? `Working on ${currentFile}` : "Batch progress"}
+              </span>
+              <span className="shrink-0 tabular-nums">{overall}%</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
               <div
@@ -477,29 +567,62 @@ export default function BatchPage() {
           </div>
         )}
 
-        {doneOutputs.length > 0 && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {doneCount} ready
-                {errorCount ? ` · ${errorCount} failed` : ""}
-              </p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Suggested: batch-{op}-results.zip · {doneOutputs.length} file(s) in archive
-              </p>
+        {(finished || doneOutputs.length > 0) && (
+          <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  {doneCount > 0
+                    ? `ZIP ready · ${doneCount} file${doneCount === 1 ? "" : "s"}`
+                    : "Batch finished"}
+                  {errorCount ? ` · ${errorCount} failed` : ""}
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  {doneOutputs.length
+                    ? `Download batch-${op}-results.zip (${doneOutputs.length} item${doneOutputs.length === 1 ? "" : "s"}). Private — built on your device.`
+                    : "No successful outputs yet. Fix failed files and retry, or change the operation."}
+                </p>
+              </div>
+              {doneOutputs.length > 0 && (
+                <Button
+                  className="min-h-11"
+                  onClick={() =>
+                    void downloadZip(doneOutputs, `batch-${op}-results.zip`).then(
+                      () => toast.success("ZIP download started")
+                    )
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                  Download ZIP
+                </Button>
+              )}
+              {errorCount > 0 && !busy && (
+                <Button
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => void retryFailed()}
+                >
+                  Retry failed
+                </Button>
+              )}
+              <Button variant="outline" className="min-h-11" onClick={resetAll}>
+                Clear workspace
+              </Button>
             </div>
-            <Button
-              className="min-h-11"
-              onClick={() =>
-                void downloadZip(doneOutputs, `batch-${op}-results.zip`)
-              }
-            >
-              <Download className="h-4 w-4" />
-              Download ZIP
-            </Button>
-            <Button variant="outline" className="min-h-11" onClick={resetAll}>
-              Process another
-            </Button>
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+              Next:{" "}
+              <Link href="/compress" className="underline underline-offset-2">
+                Compress
+              </Link>
+              {" · "}
+              <Link href="/protect" className="underline underline-offset-2">
+                Protect
+              </Link>
+              {" · "}
+              <Link href="/workflows" className="underline underline-offset-2">
+                Action Wizard
+              </Link>
+            </p>
           </div>
         )}
       </ToolShell>

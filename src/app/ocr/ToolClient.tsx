@@ -71,12 +71,16 @@ export default function OcrPage() {
   const run = async () => {
     if (!file) return;
     const out = await job.run(async ({ setProgress, setLabel, isCancelled }) => {
-      setLabel("OCR in progress…");
-      setProgress(5);
+      setLabel("Starting OCR…");
+      setProgress(3);
+      const buf = await file.arrayBuffer();
+      if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+
       if (searchable) {
         const { ocrToSearchablePdf } = await import("@/lib/pdf/ocr-searchable");
-        const ocr = await ocrToSearchablePdf(await file.arrayBuffer(), {
+        const ocr = await ocrToSearchablePdf(buf, {
           lang,
+          isCancelled,
           onProgress: (pct, label) => {
             if (isCancelled()) return;
             setProgress(pct);
@@ -89,10 +93,11 @@ export default function OcrPage() {
           bytes: ocr.bytes,
           name: suggestedName(file.name, "ocr"),
           mime: "application/pdf",
+          failedPages: ocr.failedPages,
         };
       }
       const { ocrPagesToText } = await import("@/lib/pdf/ocr-searchable");
-      const full = await ocrPagesToText(await file.arrayBuffer(), {
+      const full = await ocrPagesToText(buf, {
         lang,
         isCancelled,
         onProgress: (pct, label) => {
@@ -102,17 +107,29 @@ export default function OcrPage() {
         },
       });
       if (isCancelled()) throw new DOMException("Aborted", "AbortError");
+      if (!full.replace(/--- Page \d+ ---/g, "").trim()) {
+        throw new Error(
+          "OCR found little or no text. Try another language (English + Hindi for mixed docs) or a clearer scan."
+        );
+      }
       return {
         text: full,
         bytes: new TextEncoder().encode(full),
         name: suggestedName(file.name, "ocr", "txt"),
         mime: "text/plain",
+        failedPages: [] as number[],
       };
     });
     if (!out) return;
     setText(out.text);
     setResult({ bytes: out.bytes, name: out.name, mime: out.mime });
-    toast.success(searchable ? "Searchable OCR PDF ready" : "OCR complete");
+    if (out.failedPages.length) {
+      toast.message(
+        `Searchable PDF ready — skipped page${out.failedPages.length === 1 ? "" : "s"} ${out.failedPages.join(", ")}`
+      );
+    } else {
+      toast.success(searchable ? "Searchable OCR PDF ready" : "OCR complete");
+    }
   };
 
   const prominent = OCR_LANGS.filter((l) => l.prominent);
@@ -138,8 +155,10 @@ export default function OcrPage() {
             <p className="text-xs text-zinc-500">
               Make scanned PDFs searchable. Recognition runs entirely on your
               device — nothing is uploaded. Searchable mode keeps page images
-              and adds a selectable text layer. Hindi includes Devanagari
-              support so text is actually searchable.
+              and adds a selectable text layer. Pick the language that matches
+              the scan (English + Hindi for mixed docs). Language data downloads
+              once, then stays cached. If a page fails, the image is kept and
+              the rest continue.
             </p>
             <p className="rounded-lg border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
               Private · on your device · no upload
