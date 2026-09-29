@@ -5,7 +5,9 @@
 
 import {
   createLanguageModelSession,
+  describeAvailability,
   isLanguageModelUsable,
+  languageModelAvailability,
   throwIfAborted,
 } from "./chrome-ai";
 import {
@@ -375,7 +377,7 @@ function basicSearchAnswer(
     citations,
     confidence: scored[0]?.score ? Math.min(1, scored[0].score / 8) : 0,
     method: "basic-search",
-    engineLabel: "Basic search · private · on your device",
+    engineLabel: "Basic search (keyword match) · not generative AI · private",
   };
 }
 
@@ -494,19 +496,22 @@ export async function probeChatEngine(): Promise<{
   /** Plain-language explanation of what Ask will do. */
   detail: string;
 }> {
-  const browserAi = await isLanguageModelUsable();
-  if (browserAi) {
+  const avail = describeAvailability(await languageModelAvailability());
+  if (avail.ready) {
     return {
       browserAi: true,
-      label: "On-device browser AI available",
-      detail:
-        "Answers use on-device browser AI when it can. If it can’t, Ask PDF falls back to basic search (keyword matching) with page citations — still private, nothing uploaded.",
+      label: avail.needsDownload
+        ? "On-device browser AI · may download once"
+        : "On-device browser AI available",
+      detail: avail.needsDownload
+        ? "This browser can answer on your device after a one-time AI download (managed by the browser, not our servers). If that isn’t ready, Ask PDF falls back to basic search (keyword matching) with page citations — not generative AI. Still private, nothing uploaded."
+        : "Answers use on-device browser AI when it can. If it can’t, Ask PDF falls back to basic search (keyword matching) with page citations — not generative AI. Still private, nothing uploaded.",
     };
   }
   return {
     browserAi: false,
     label: "Basic search mode",
     detail:
-      "On-device browser AI isn’t available in this browser. Ask PDF uses basic search (keyword matching) with page citations. Still private — nothing is uploaded.",
+      "On-device browser AI isn’t available in this browser. Ask PDF uses basic search (keyword matching) with page citations — not generative AI. Still private — nothing is uploaded.",
   };
 }

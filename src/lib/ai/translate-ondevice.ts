@@ -12,8 +12,8 @@ import {
   type ProgressCb,
 } from "./transformers-runtime";
 import {
+  describeAvailability,
   getTranslatorCtor,
-  isTranslatorUsable,
   translatorAvailability,
 } from "./chrome-ai";
 import {
@@ -312,15 +312,20 @@ export async function probeTranslateEngine(
   label: string;
   detail: string;
 }> {
-  const browserTranslator = await isTranslatorUsable(sourceLang, targetLang);
+  const avail = describeAvailability(
+    await translatorAvailability(sourceLang, targetLang)
+  );
   const marianAvailable = !!resolveMarianPair(sourceLang, targetLang);
-  if (browserTranslator) {
+  if (avail.ready) {
     return {
       browserTranslator: true,
       marianAvailable,
-      label: "On-device browser AI available",
-      detail:
-        "Default: translate with on-device browser AI. If needed, an offline language pack may download once (then cached). Basic glossary is a last resort — not AI.",
+      label: avail.needsDownload
+        ? "On-device browser AI · may download once"
+        : "On-device browser AI available",
+      detail: avail.needsDownload
+        ? "This browser can translate on your device after a one-time AI download (browser-managed). If needed, an offline language pack may download once (then cached). Basic glossary is last resort — not AI."
+        : "Default: translate with on-device browser AI. If needed, an offline language pack may download once (then cached). Basic glossary is a last resort — not AI.",
     };
   }
   if (marianAvailable) {
@@ -329,7 +334,7 @@ export async function probeTranslateEngine(
       browserTranslator: false,
       marianAvailable: true,
       label: "Offline language pack available",
-      detail: `On-device browser AI isn’t available here. We’ll use an offline language pack (${pair.sizeLabel} on first use, then cached). If that fails, a basic glossary (not AI) is the fallback.`,
+      detail: `On-device browser AI isn’t available here. We’ll use an offline language pack (${pair.sizeLabel} on first use, then cached). If that fails, a basic glossary (word list — not AI) is the fallback.`,
     };
   }
   return {
@@ -337,7 +342,7 @@ export async function probeTranslateEngine(
     marianAvailable: false,
     label: "Basic glossary fallback",
     detail:
-      "No on-device browser AI or offline pack for this language pair. Translation will use a basic glossary (word list) — not full AI translation. Still private, nothing uploaded.",
+      "No on-device browser AI or offline pack for this language pair. Translation will use a basic glossary (word list) — not AI. Still private, nothing uploaded.",
   };
 }
 

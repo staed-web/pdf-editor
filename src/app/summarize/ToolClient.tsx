@@ -338,10 +338,10 @@ export default function SummarizePage() {
             )}
             {allowXenova && !fastOnly && (
               <p className="rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                Downloads only after you turn this on and tap Summarize — never
-                on page load. Large pack (~230 MB); may struggle on low-memory
-                devices. Prefer leaving this off unless you need a richer
-                summary.
+                Opt-in only: downloads after you turn this on and tap Summarize —
+                never on page load, never automatic. Large pack (~230 MB); may
+                struggle on low-memory devices. Prefer leaving this off; quick
+                outline (not AI) and browser AI stay available without it.
               </p>
             )}
             <SoftLimitsNote />

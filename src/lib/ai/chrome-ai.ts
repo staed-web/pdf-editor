@@ -29,6 +29,26 @@ function isUsable(a: Availability): boolean {
   return a !== "unavailable" && a !== "no";
 }
 
+/** Plain-language status for capability banners (no jargon). */
+export function describeAvailability(a: Availability): {
+  ready: boolean;
+  needsDownload: boolean;
+  short: string;
+} {
+  const v = String(a || "unavailable").toLowerCase();
+  if (v === "available" || v === "readily" || v === "yes") {
+    return { ready: true, needsDownload: false, short: "ready" };
+  }
+  if (v === "downloadable" || v === "after-download" || v === "downloading") {
+    return {
+      ready: true,
+      needsDownload: true,
+      short: v === "downloading" ? "downloading" : "downloadable",
+    };
+  }
+  return { ready: false, needsDownload: false, short: "unavailable" };
+}
+
 /** Detect Prompt API (LanguageModel) with legacy fallbacks. */
 export function getLanguageModelCtor(): {
   availability?: (opts?: Record<string, unknown>) => Promise<unknown>;

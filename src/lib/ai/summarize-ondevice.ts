@@ -12,7 +12,9 @@ import {
 } from "./transformers-runtime";
 import {
   createBrowserSummarizer,
+  describeAvailability,
   isSummarizerUsable,
+  summarizerAvailability,
   throwIfAborted,
 } from "./chrome-ai";
 import {
@@ -296,20 +298,23 @@ export async function probeSummarizeEngine(): Promise<{
   label: string;
   detail: string;
 }> {
-  const browserSummarizer = await isSummarizerUsable();
-  if (browserSummarizer) {
+  const avail = describeAvailability(await summarizerAvailability());
+  if (avail.ready) {
     return {
       browserSummarizer: true,
-      label: "On-device browser AI available",
-      detail:
-        "Default: summarize on your device with browser AI. Optional larger offline model is off unless you turn it on.",
+      label: avail.needsDownload
+        ? "On-device browser AI · may download once"
+        : "On-device browser AI available",
+      detail: avail.needsDownload
+        ? "This browser can summarize on your device after a one-time AI download (browser-managed). Optional larger offline model (~230 MB) stays off unless you turn it on — never auto-downloads. Quick outline (key sentences, not AI) is always available."
+        : "Default: summarize on your device with browser AI. Quick outline (key sentences — not AI) is always available. Optional larger offline model (~230 MB) stays off unless you turn it on — never auto-downloads.",
     };
   }
   return {
     browserSummarizer: false,
     label: "Quick outline · optional larger model",
     detail:
-      "On-device browser AI isn’t available here. You’ll get a quick outline from key sentences. You can optionally download a larger offline summary model (~230 MB) — never starts automatically.",
+      "On-device browser AI isn’t available here. You’ll get a quick outline from key sentences (not AI). You can optionally download a larger offline summary model (~230 MB) — never starts automatically.",
   };
 }
 
