@@ -4,6 +4,7 @@
  */
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { renderPdfPages } from "./ops";
+import { endOcrWorker } from "./ocr-worker-stop.mjs";
 
 export type OcrProgress = (pct: number, label?: string) => void;
 
@@ -82,7 +83,10 @@ export async function ocrToSearchablePdf(
     opts.onProgress?.(7, "Preparing language data…");
     worker = await createWorker(lang, 1, {
       logger: (m) => {
-        if (opts.isCancelled?.()) return;
+        if (opts.isCancelled?.()) {
+          void worker?.terminate();
+          return;
+        }
         if (m.status === "recognizing text" && typeof m.progress === "number") {
           opts.onProgress?.(10 + Math.round(m.progress * 70), "Recognizing…");
         }
@@ -121,9 +125,16 @@ export async function ocrToSearchablePdf(
 
       try {
         const result = await worker.recognize(pages[i].blob);
+        throwIfCancelled();
         data = result.data;
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") throw err;
+        if (
+          opts.isCancelled?.() ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          worker = await endOcrWorker(worker);
+          throw new DOMException("Aborted", "AbortError");
+        }
         failedPages.push(pageNum);
         textChunks.push(
           `--- Page ${pageNum} ---\n[OCR could not read this page — image kept, text layer skipped]`
@@ -193,13 +204,7 @@ export async function ocrToSearchablePdf(
     opts.onProgress?.(100, failedPages.length ? "Done (some pages skipped)" : "Done");
     return { bytes, text: textChunks.join("\n\n"), failedPages };
   } finally {
-    if (worker) {
-      try {
-        await worker.terminate();
-      } catch {
-        /* ignore terminate races on cancel */
-      }
-    }
+    worker = await endOcrWorker(worker);
   }
 }
 
@@ -214,9 +219,12 @@ export async function ocrPagesToText(
   opts.onProgress?.(5, "Rendering pages");
   const pages = await renderPdfPages(source, { format: "png", scale: 2 });
   if (opts.isCancelled?.()) throw new DOMException("Aborted", "AbortError");
-  const worker = await createWorker(lang, 1, {
+  let worker = await createWorker(lang, 1, {
     logger: (m) => {
-      if (opts.isCancelled?.()) return;
+      if (opts.isCancelled?.()) {
+        void worker?.terminate();
+        return;
+      }
       if (m.status === "loading language traineddata") {
         opts.onProgress?.(8, "Downloading language data (once)…");
       }
@@ -233,11 +241,21 @@ export async function ocrPagesToText(
         10 + Math.round((i / pages.length) * 80),
         `OCR page ${i + 1} of ${pages.length}…`
       );
-      const { data } = await worker.recognize(pages[i].blob);
-      chunks.push(`--- Page ${i + 1} ---\n${data.text}`);
+      try {
+        const { data } = await worker.recognize(pages[i].blob);
+        chunks.push(`--- Page ${i + 1} ---\n${data.text}`);
+      } catch (err) {
+        if (
+          opts.isCancelled?.() ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        throw err;
+      }
     }
   } finally {
-    await worker.terminate();
+    await endOcrWorker(worker);
   }
   return chunks.join("\n\n");
 }
