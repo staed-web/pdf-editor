@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { toolMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { faqPageJsonLd, toolLandingMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = toolMetadata("merge");
+export const metadata: Metadata = toolLandingMetadata("merge");
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <JsonLd data={faqPageJsonLd("merge")} />
+      {children}
+    </>
+  );
 }

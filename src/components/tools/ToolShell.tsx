@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { Shield, SlidersHorizontal, X } from "lucide-react";
 import type { ToolDef } from "@/lib/tools";
+import { getToolLanding } from "@/lib/tool-landing";
+import { ToolFaq } from "@/components/seo/ToolFaq";
 import { HonestyBadgeRow } from "@/components/tools/HonestyBadge";
 import { AdBanner } from "@/components/ads/AdBanner";
 import { RelatedTools } from "./RelatedTools";
@@ -25,6 +27,7 @@ export function ToolShell({
   className?: string;
 }) {
   const Icon = tool.icon;
+  const landing = getToolLanding(tool.slug);
   const [sheetOpen, setSheetOpen] = useState(false);
   const standalone = useStandalone();
 
@@ -48,7 +51,7 @@ export function ToolShell({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                {tool.name}
+                {landing?.h1 ?? tool.name}
               </h1>
               {options && (
                 <button
@@ -65,7 +68,7 @@ export function ToolShell({
               )}
             </div>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
-              {tool.description}
+              {landing?.intro ?? tool.description}
             </p>
             <HonestyBadgeRow badges={tool.honestyBadges} className="mt-2.5" />
           </div>
@@ -91,6 +94,8 @@ export function ToolShell({
           />
         </div>
       )}
+
+      {landing ? <ToolFaq landing={landing} /> : null}
 
       <RelatedTools slug={tool.slug} />
 

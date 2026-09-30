@@ -25,15 +25,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     core.map((e) => new URL(e.url).pathname.replace(/\/$/, "") || "/")
   );
 
+  const seoFocus = new Set([
+    "/merge",
+    "/compress",
+    "/split",
+    "/pdf-to-jpg",
+    "/jpg-to-pdf",
+  ]);
+
   const toolEntries: MetadataRoute.Sitemap = TOOLS.filter((t) => {
     const path = t.href.replace(/\/$/, "") || "/";
     return !corePaths.has(path);
-  }).map((t) => ({
-    url: `${BASE}${t.href.startsWith("/") ? t.href : `/${t.href}`}`,
-    lastModified: now,
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
-  }));
+  }).map((t) => {
+    const path = t.href.startsWith("/") ? t.href : `/${t.href}`;
+    const focus = seoFocus.has(path);
+    return {
+      url: `${BASE}${path}`,
+      lastModified: now,
+      changeFrequency: focus ? ("weekly" as const) : ("monthly" as const),
+      priority: focus ? 0.85 : 0.7,
+    };
+  });
 
   return [...core, ...toolEntries];
 }

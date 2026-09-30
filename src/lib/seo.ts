@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTool } from "@/lib/tools";
+import { getToolLanding } from "@/lib/tool-landing";
 
 export const SITE_URL = "https://instantpdfedit.com";
 export const SITE_NAME = "InstantPDFEdit";
@@ -60,6 +61,35 @@ export function toolMetadata(slug: string): Metadata {
     description: tool.description,
     path: tool.href.startsWith("/") ? tool.href : `/${tool.href}`,
   });
+}
+
+
+export function toolLandingMetadata(slug: string): Metadata {
+  const landing = getToolLanding(slug);
+  if (!landing) return toolMetadata(slug);
+  return pageMetadata({
+    title: landing.title,
+    description: landing.description,
+    path: landing.path,
+  });
+}
+
+export function faqPageJsonLd(slug: string) {
+  const landing = getToolLanding(slug);
+  if (!landing || landing.faqs.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    url: absoluteUrl(landing.path),
+    mainEntity: landing.faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: f.a,
+      },
+    })),
+  };
 }
 
 export const homeJsonLd = {
