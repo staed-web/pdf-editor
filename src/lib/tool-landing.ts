@@ -178,6 +178,166 @@ const LANDINGS: ToolLanding[] = [
       },
     ],
   },
+  {
+    slug: "pdf-to-word",
+    path: "/pdf-to-word",
+    title: "PDF to Word — free DOCX export, no upload",
+    description:
+      "Export PDF text to a Word .docx on your device. Fast text mode or Rich layout with page images when text is missing. Private approximation — not a perfect Word clone.",
+    h1: "Convert PDF to Word on your device",
+    intro:
+      "Export a PDF into a Word-friendly .docx without uploading. Fast mode pulls extractable text into lines and paragraphs. Rich mode also embeds page JPEGs when a page has little or no text. Layout will not match Word perfectly — use OCR first on scans.",
+    faqs: [
+      {
+        q: "How do I convert a PDF to Word here?",
+        a: "Drop a PDF, choose Fast (text) or Rich (layout + images), then tap Export DOCX. You download a .docx built in your browser. Scanned pages need OCR first if there is no selectable text.",
+      },
+      {
+        q: "Is this a perfect Word conversion?",
+        a: "No. It is a free local approximation: text is clustered into lines and paragraphs with basic bold/italic/size detection. Complex tables, columns, and exact fonts often differ from Adobe or Word. Rich mode helps image-only pages.",
+      },
+      {
+        q: "Are my files uploaded?",
+        a: "No. Conversion runs on your device. The PDF is not sent to InstantPDFEdit for this tool.",
+      },
+      {
+        q: "What is the difference between Fast and Rich?",
+        a: "Fast exports extractable text only and is quicker. Rich also embeds JPEG snapshots of pages that lack text so you still see the page content in Word.",
+      },
+      {
+        q: "My scan exported blank or garbled text. What should I do?",
+        a: "Run OCR PDF first to add a text layer, then convert. Password-protected files should be unlocked before export.",
+      },
+    ],
+  },
+  {
+    slug: "protect",
+    path: "/protect",
+    title: "Password protect PDF — encrypt in your browser",
+    description:
+      "Add a password to a PDF on your device. Encryption stays private — InstantPDFEdit never uploads your file and cannot recover a lost password.",
+    h1: "Password-protect a PDF without uploading",
+    intro:
+      "Encrypt a PDF with a user password so opening it requires that password. Protection runs entirely in your browser. Keep the password safe — InstantPDFEdit cannot reset or recover it.",
+    faqs: [
+      {
+        q: "How do I password-protect a PDF?",
+        a: "Drop a PDF, enter a password and confirm it, then tap Protect PDF. Download the encrypted file. Recipients need the password to open it.",
+      },
+      {
+        q: "Is my PDF uploaded when I protect it?",
+        a: "No. Encryption runs on your device. The file and password never leave your browser for this tool.",
+      },
+      {
+        q: "Can InstantPDFEdit recover my password?",
+        a: "No. We never see your password. If you forget it, you will need an unprotected copy of the original file.",
+      },
+      {
+        q: "What kind of protection is this?",
+        a: "User-password encryption so opening the PDF requires the password. It is not a substitute for full enterprise DRM or permission policies beyond what the PDF encryption supports here.",
+      },
+      {
+        q: "How do I remove a password later?",
+        a: "Use Unlock PDF with the correct password to download an unprotected copy. Only do that if you are allowed to remove protection.",
+      },
+    ],
+  },
+  {
+    slug: "ocr",
+    path: "/ocr",
+    title: "OCR PDF — make scans searchable, on-device",
+    description:
+      "Run OCR on a scanned PDF in your browser. Searchable mode keeps page images and adds a selectable text layer. Language packs download once and stay cached — nothing is uploaded.",
+    h1: "Make a scanned PDF searchable on your device",
+    intro:
+      "Recognize text in scans without uploading. Choose a language (English, Hindi, and more). Searchable mode keeps the page images and adds a text layer you can select and search. Language data downloads once, then stays cached. Cancel stops the worker promptly.",
+    faqs: [
+      {
+        q: "How does OCR work here?",
+        a: "Pages are recognized on your device with an on-device OCR engine. You can download plain text or a searchable PDF that keeps the images and adds a selectable text layer.",
+      },
+      {
+        q: "Is my PDF uploaded for OCR?",
+        a: "No. Recognition runs locally. A language pack may download once to your browser cache; your PDF itself is not uploaded.",
+      },
+      {
+        q: "Which language should I pick?",
+        a: "Match the language of the scan. For mixed English and Hindi documents, pick the combined option when listed. Wrong language often yields little or garbled text.",
+      },
+      {
+        q: "What if OCR finds little or no text?",
+        a: "Try a clearer scan, a higher-resolution PDF, or another language. Failed pages keep their image so the rest of the document can still finish.",
+      },
+      {
+        q: "Can I cancel a long OCR job?",
+        a: "Yes. Cancel stops recognition and clears the OCR worker so it does not keep downloading language data in the background.",
+      },
+    ],
+  },
+  {
+    slug: "rotate",
+    path: "/rotate",
+    title: "Rotate PDF pages — 90°, 180°, 270°, no upload",
+    description:
+      "Rotate all pages or selected pages of a PDF by 90°, 180°, or 270° in your browser. Private — files stay on your device.",
+    h1: "Rotate PDF pages without uploading",
+    intro:
+      "Fix sideways or upside-down pages. Choose 90°, 180°, or 270°, optionally limit to pages like 1,3,5, then download the rotated PDF. Rotation runs on your device.",
+    faqs: [
+      {
+        q: "How do I rotate a PDF?",
+        a: "Drop a PDF, pick 90°, 180°, or 270°, optionally enter page numbers (or leave blank for all pages), then tap Rotate. Download the result.",
+      },
+      {
+        q: "Can I rotate only some pages?",
+        a: "Yes. Use the Pages field with a list such as 1,3,5. Leave it empty to rotate every page.",
+      },
+      {
+        q: "Is my PDF uploaded?",
+        a: "No. Rotation runs in your browser. Nothing is sent to a server for this tool.",
+      },
+      {
+        q: "Does rotate change the file forever?",
+        a: "You download a new PDF with the rotation applied. Your original file on disk is unchanged unless you overwrite it yourself.",
+      },
+      {
+        q: "When should I use Organize instead?",
+        a: "Use Organize pages if you also need to drag-reorder or delete pages visually. Rotate is the quick path when you only need a fixed angle.",
+      },
+    ],
+  },
+  {
+    slug: "organize",
+    path: "/organize",
+    title: "Organize PDF pages — reorder, rotate, delete",
+    description:
+      "Visually reorder, rotate, or delete PDF pages in your browser. Drag thumbnails, then download the new PDF. Private — no upload.",
+    h1: "Organize PDF pages on your device",
+    intro:
+      "See page thumbnails, drag to reorder, rotate individual pages, or remove ones you do not need. Apply the new order and download a fresh PDF. Everything stays in your browser.",
+    faqs: [
+      {
+        q: "How do I reorder PDF pages?",
+        a: "Drop a PDF, drag thumbnails into the order you want, optionally rotate or delete pages, then save. You download one reorganized PDF.",
+      },
+      {
+        q: "Can I rotate and delete in the same pass?",
+        a: "Yes. Organize lets you reorder, rotate, and remove pages before you download the result.",
+      },
+      {
+        q: "Are my files uploaded?",
+        a: "No. Organizing runs on your device. Pages are not sent to InstantPDFEdit.",
+      },
+      {
+        q: "Is there a page limit?",
+        a: "There is no hard cutoff. Very long PDFs use more memory for thumbnails. Prefer under about 50–100 pages for a smooth experience on phones.",
+      },
+      {
+        q: "How is this different from Rotate or Split?",
+        a: "Organize is visual multi-edit (reorder + rotate + delete). Rotate is a quick angle-only tool. Split pulls out page ranges into separate files.",
+      },
+    ],
+  },
 ];
 
 const BY_SLUG = new Map(LANDINGS.map((l) => [l.slug, l]));

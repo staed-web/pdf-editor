@@ -31,6 +31,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/split",
     "/pdf-to-jpg",
     "/jpg-to-pdf",
+    "/pdf-to-word",
+    "/protect",
+    "/ocr",
+    "/rotate",
+    "/organize",
   ]);
 
   const toolEntries: MetadataRoute.Sitemap = TOOLS.filter((t) => {
