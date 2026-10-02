@@ -36,6 +36,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/ocr",
     "/rotate",
     "/organize",
+    "/unlock",
+    "/watermark",
+    "/sign",
+    "/redact",
+    "/word-to-pdf",
+    "/page-numbers",
   ]);
 
   const toolEntries: MetadataRoute.Sitemap = TOOLS.filter((t) => {

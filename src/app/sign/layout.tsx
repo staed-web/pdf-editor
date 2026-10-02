@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { toolMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { faqPageJsonLd, toolLandingMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = toolMetadata("sign");
+export const metadata: Metadata = toolLandingMetadata("sign");
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <JsonLd data={faqPageJsonLd("sign")} />
+      {children}
+    </>
+  );
 }

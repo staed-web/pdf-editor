@@ -338,6 +338,199 @@ const LANDINGS: ToolLanding[] = [
       },
     ],
   },
+
+  {
+    slug: "unlock",
+    path: "/unlock",
+    title: "Unlock PDF — remove password in your browser",
+    description:
+      "Remove a PDF password when you know it. Unlock runs on your device — InstantPDFEdit never uploads the file or sees your password.",
+    h1: "Unlock a password-protected PDF",
+    intro:
+      "Enter the password you already know and download an unprotected copy. Unlocking stays in your browser. Only unlock files you are allowed to open.",
+    faqs: [
+      {
+        q: "How do I unlock a PDF?",
+        a: "Drop a protected PDF, type the password, then tap Unlock. You download a plain PDF without encryption.",
+      },
+      {
+        q: "Do you upload my PDF or password?",
+        a: "No. Unlocking runs on your device. The file and password never leave your browser for this tool.",
+      },
+      {
+        q: "What if the password is wrong?",
+        a: "You will see an error. InstantPDFEdit cannot guess or recover passwords. Try again only if you know the correct one.",
+      },
+      {
+        q: "Does this work on every protected PDF?",
+        a: "It works for common user-password encryption, including files protected here. Some uncommon or owner-only restrictions may not unlock.",
+      },
+      {
+        q: "How do I add a password again later?",
+        a: "Use Protect PDF to encrypt a copy with a new password. Keep that password somewhere safe — we cannot recover it.",
+      },
+    ],
+  },
+  {
+    slug: "watermark",
+    path: "/watermark",
+    title: "Watermark PDF — text stamp, no upload",
+    description:
+      "Add a text watermark such as CONFIDENTIAL to every page. Set opacity, size, color, and position in your browser — files are not uploaded.",
+    h1: "Add a text watermark to a PDF",
+    intro:
+      "Stamp wording like CONFIDENTIAL across pages. Choose opacity, font size, color, and position (diagonal, center, or corners). Watermarking runs on your device.",
+    faqs: [
+      {
+        q: "How do I watermark a PDF?",
+        a: "Drop a PDF, enter the stamp text, adjust opacity and position, then tap Add watermark. Download the stamped file.",
+      },
+      {
+        q: "Can I use an image watermark here?",
+        a: "This tool stamps text. For logos or seals, use Background or the editor tools that place images.",
+      },
+      {
+        q: "Is my PDF uploaded?",
+        a: "No. The watermark is drawn in your browser. Nothing is sent to a server for this tool.",
+      },
+      {
+        q: "Will the watermark cover the whole page?",
+        a: "Diagonal and center place a large stamp; corner options sit in that corner. Lower opacity keeps the page easier to read.",
+      },
+      {
+        q: "Can I remove a watermark later?",
+        a: "Not automatically. Keep an unmarked original if you may need a clean copy again.",
+      },
+    ],
+  },
+  {
+    slug: "sign",
+    path: "/sign",
+    title: "Sign PDF free — draw or type, no upload",
+    description:
+      "Sign a PDF in your browser. Draw, type, or upload a signature in the InstantPDFEdit editor. Files stay on your device — nothing is uploaded.",
+    h1: "Sign a PDF on your device",
+    intro:
+      "Open the editor to draw, type, or upload a signature and place it on any page. For contracts, sign then flatten so forms cannot be edited. Everything stays in your browser.",
+    faqs: [
+      {
+        q: "How do I sign a PDF here?",
+        a: "Open the editor from this page, add your PDF, create a signature (draw, type, or upload), place it, then export. Export can flatten and lock when a signature is present.",
+      },
+      {
+        q: "Is signing the same as DocuSign?",
+        a: "No. This is a free visual signature on the PDF in your browser. It is not a paid e-sign workflow with identity checks or audit trails.",
+      },
+      {
+        q: "Are my files uploaded?",
+        a: "No. Signing runs locally. Your PDF stays on your device.",
+      },
+      {
+        q: "Should I flatten after signing?",
+        a: "For contracts, yes — flatten and lock so form fields and annotations are harder to change. Use Flatten after export if needed.",
+      },
+      {
+        q: "Can I request someone else to sign?",
+        a: "Use Request signature for a simple pack you can email. It is not a hosted signing portal.",
+      },
+    ],
+  },
+  {
+    slug: "redact",
+    path: "/redact",
+    title: "Redact PDF — black out text privately",
+    description:
+      "Black out sensitive areas on a PDF in your browser. Soft boxes or hard wipe. Pattern hints for emails and phones. Files are not uploaded.",
+    h1: "Redact a PDF without uploading",
+    intro:
+      "Mark regions to black out, or use pattern search for emails and similar text. Soft mode draws boxes; Hard wipe burns black into the page image so underlying text in those areas is destroyed (best-effort). Verify the preview before you download.",
+    faqs: [
+      {
+        q: "How do I redact a PDF?",
+        a: "Drop a PDF, draw black-out regions or select pattern matches, choose Soft or Hard wipe, then apply. Check the verify preview before downloading.",
+      },
+      {
+        q: "What is Hard wipe vs soft boxes?",
+        a: "Soft boxes cover the area visually but text may still be selectable underneath. Hard wipe redraws affected pages so black regions destroy the content there — still not full forensic sanitization.",
+      },
+      {
+        q: "Is my PDF uploaded for redaction?",
+        a: "No. Redaction runs on your device. Nothing is sent to InstantPDFEdit for this tool.",
+      },
+      {
+        q: "Can patterns find every secret automatically?",
+        a: "No. Pattern search is a helper for common shapes like emails or phone-like numbers. Always review pages yourself for names, IDs, and images.",
+      },
+      {
+        q: "Is this enough for legal or classified data?",
+        a: "Treat it as a careful local tool, not certified sanitization. Prefer Hard wipe, verify every page, and follow your own compliance rules.",
+      },
+    ],
+  },
+  {
+    slug: "word-to-pdf",
+    path: "/word-to-pdf",
+    title: "Word to PDF — DOCX convert, no upload",
+    description:
+      "Convert a .docx to PDF in your browser. Free local conversion via HTML rendering. Layout is approximate — Print remains a high-fidelity fallback.",
+    h1: "Convert Word to PDF on your device",
+    intro:
+      "Drop a .docx, preview the converted content, then download a PDF built in your browser. Layout will not match Word perfectly. Use Print / Save as PDF if you need a closer look. The file is not uploaded.",
+    faqs: [
+      {
+        q: "How do I convert Word to PDF here?",
+        a: "Drop a .docx file, wait for the preview, then tap Download PDF. If conversion struggles, use Print / Save as PDF from the preview.",
+      },
+      {
+        q: "Is this a perfect Word conversion?",
+        a: "No. It is a free local approximation: the document is turned into HTML, then into a PDF. Complex layouts, fonts, and floating objects often differ from Word.",
+      },
+      {
+        q: "Are my files uploaded?",
+        a: "No. Conversion runs in your browser. The .docx stays on your device.",
+      },
+      {
+        q: "Does .doc (old Word) work?",
+        a: "This page expects .docx. Save older .doc files as .docx in Word first, or use Print to PDF from another app.",
+      },
+      {
+        q: "When should I use Print instead?",
+        a: "When you need closer print fidelity. The built-in download is convenient; Print uses your browser’s print engine as a fallback.",
+      },
+    ],
+  },
+  {
+    slug: "page-numbers",
+    path: "/page-numbers",
+    title: "Add page numbers to PDF — free, no upload",
+    description:
+      "Number PDF pages in the header or footer. Custom format with {n} and {total}. Private — numbering runs in your browser.",
+    h1: "Add page numbers to a PDF",
+    intro:
+      "Stamp page numbers in the header or footer. Choose alignment and a format such as Page {n} of {total}. Numbering stays on your device — nothing is uploaded.",
+    faqs: [
+      {
+        q: "How do I add page numbers?",
+        a: "Drop a PDF, pick Header or Footer, set alignment and format, then tap Add numbers. Download the numbered PDF.",
+      },
+      {
+        q: "What do {n} and {total} mean?",
+        a: "{n} is the current page number. {total} is how many pages the PDF has. Example: Page {n} of {total}.",
+      },
+      {
+        q: "Is my PDF uploaded?",
+        a: "No. Page numbers are drawn in your browser. The file never leaves your device for this tool.",
+      },
+      {
+        q: "Can I start numbering from a number other than 1?",
+        a: "This tool uses the PDF’s own page order starting at 1. For Bates-style prefixes, use Bates numbering instead.",
+      },
+      {
+        q: "Will numbers cover existing content?",
+        a: "They sit in the header or footer margin area. Dense layouts may still overlap — check a few pages after download.",
+      },
+    ],
+  },
 ];
 
 const BY_SLUG = new Map(LANDINGS.map((l) => [l.slug, l]));
